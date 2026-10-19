@@ -154,6 +154,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
                     // Authoritative death: one reliable MOBDIE path (no dual MOBEVENT|die).
                     dieNet.SendMobDie(dieSyncId, dieX, dieY, identityToken, dieType);
+                    Tools.GameTrace.Event("mob", "host sent MOBDIE syncId={SyncId} x={X:F0} y={Y:F0} gen={Gen} type={Type}", dieSyncId, dieX, dieY, identityToken, dieType);
                 }
             }
 

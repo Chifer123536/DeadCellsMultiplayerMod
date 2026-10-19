@@ -149,23 +149,42 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             if (mob == null)
                 return false;
 
+            // Live identity check first: the encounter boss reference can move between phase
+            // rebuilds, so it must never be memoized.
             try
             {
-                // Never the encounter boss itself.
-                if (BossSyncHelpers.IsBossEncounterCombatant(mob))
-                    return false;
-
                 var level = mob._level;
                 if (level != null && ReferenceEquals(level.boss, mob))
                     return false;
-
-                return IsBossRelatedEntity(SafePartType(mob));
             }
             catch
             {
                 return false;
             }
+
+            // Type-based verdict is memoized: this scan runs every frame over all tracked mobs
+            // and the verdict depends only on the (immutable) runtime type — the string
+            // signature + IsBossRelatedEntity token scan per mob per frame was pure waste.
+            if (s_bossPartVerdictCache.TryGetValue(mob, out var cached))
+                return cached.Value;
+
+            bool verdict;
+            try
+            {
+                // Never the encounter boss itself.
+                verdict = !BossSyncHelpers.IsBossEncounterCombatant(mob) &&
+                          IsBossRelatedEntity(SafePartType(mob));
+            }
+            catch
+            {
+                verdict = false;
+            }
+
+            s_bossPartVerdictCache.AddOrUpdate(mob, new System.Runtime.CompilerServices.StrongBox<bool>(verdict));
+            return verdict;
         }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Mob, System.Runtime.CompilerServices.StrongBox<bool>> s_bossPartVerdictCache = new();
 
         private static string SafePartType(Mob mob)
         {

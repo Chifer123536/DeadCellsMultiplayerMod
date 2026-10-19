@@ -245,6 +245,18 @@ namespace DeadCellsMultiplayerMod
             if (slot.HasValue && slot.Value >= 0)
                 return slot.Value;
 
+            // Per-process slot override. options.curSlot lives in a shared config file, so two
+            // game processes on one machine (local co-op testing) race on it and can silently
+            // converge onto the SAME save slot — concurrent writes to one user_N.dat corrupted
+            // it with NUL bytes. An env var is process-scoped and wins over the shared config.
+            var envSlot = Environment.GetEnvironmentVariable("DCCM_SAVE_SLOT");
+            if (!string.IsNullOrWhiteSpace(envSlot) &&
+                int.TryParse(envSlot, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedEnvSlot) &&
+                parsedEnvSlot >= 0)
+            {
+                return parsedEnvSlot;
+            }
+
             try
             {
                 var current = dc.Main.Class.ME?.options?.curSlot;

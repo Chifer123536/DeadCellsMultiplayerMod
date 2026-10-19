@@ -93,6 +93,12 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
         /// Re-arms the MOBREG broadcast after a runtime mob registration, without disturbing a
         /// bootstrap burst that is still in flight.
         /// </summary>
+        /// <remarks>
+        /// A single resend is not enough: a client that is mid-level-load (generation not ready yet)
+        /// or that loses the packet ends up with a host-only mob forever — states for its NetId fail
+        /// resolution and, being non-boss, are dropped without replica creation. MOBREG is
+        /// idempotent on the client, so a short burst is cheap insurance.
+        /// </remarks>
         private static void MarkHostMobRegistryDirtyForRuntimeSpawn()
         {
             if (!IsHostAuthorityForNetIds())
@@ -100,8 +106,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
             lock (Sync)
             {
-                if (s_hostMobRegistryResendsRemaining < 1)
-                    s_hostMobRegistryResendsRemaining = 1;
+                if (s_hostMobRegistryResendsRemaining < RuntimeSpawnRegistryResendCount)
+                    s_hostMobRegistryResendsRemaining = RuntimeSpawnRegistryResendCount;
             }
         }
 
@@ -177,6 +183,13 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 var rejectedGeneration = 0;
                 lock (Sync)
                 {
+                    // Reserved set: group-spawned mobs (Flies, Bats) sit at identical coordinates.
+                    // Binding must consume each local candidate at most once per batch, otherwise
+                    // two registry entries grab the same mob and its twin stays unbound forever
+                    // ("mob exists only for one player"). With consumption in place the ambiguity
+                    // gap check is also relaxed inside TryBind (see reservedMobs handling there):
+                    // identical-position same-type candidates are interchangeable.
+                    s_registryBindReservedScratch.Clear();
                     for (var i = 0; i < entries.Count; i++)
                     {
                         var entry = entries[i];
@@ -197,11 +210,12 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                                 entry.Type,
                                 entry.X,
                                 entry.Y,
-                                reservedMobs: null,
+                                reservedMobs: s_registryBindReservedScratch,
                                 out var bound,
                                 out var duplicateTwin) &&
                             bound != null)
                         {
+                            s_registryBindReservedScratch.Add(bound);
                             MobSyncTrace.LogBindSyncId(
                                 "mobreg_bind",
                                 entry.NetId,
@@ -229,6 +243,21 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         // early and a later resync repairs it, but for a host runtime spawn (malaise
                         // wave, summon, elite replacement) the mob simply does not exist here and
                         // never will. Build the replica so the second player can see and fight it.
+                        //
+                        // Duplicate guard: if an UNBOUND same-type candidate still sits near this
+                        // entry, a later MOBREG burst can bind it — spawning a replica now would
+                        // double the enemy on this client. Defer instead.
+                        if (HasUnboundSameTypeCandidateNearLocked(entry.Type, entry.X, entry.Y))
+                        {
+                            MobSyncTrace.LogBindSyncId(
+                                "mobreg_defer_unbound_candidate",
+                                entry.NetId,
+                                entry.Type ?? string.Empty,
+                                entry.X,
+                                entry.Y);
+                            continue;
+                        }
+
                         var spawned = TryCreateClientMobReplica(entry.Type, entry.X, entry.Y);
                         if (spawned != null)
                         {
@@ -239,6 +268,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                                 trackedMobs.Add(spawned);
                                 trackedMobIndices[spawned] = trackedMobs.Count - 1;
                             }
+                            s_registryBindReservedScratch.Add(spawned);
 
                             MobSyncTrace.LogBindSyncId(
                                 "mobreg_spawn",
@@ -246,14 +276,53 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                                 entry.Type ?? string.Empty,
                                 entry.X,
                                 entry.Y);
+                            Tools.GameTrace.Event("mob", "client spawned replica netId={NetId} type={Type} x={X:F0} y={Y:F0}", entry.NetId, entry.Type, entry.X, entry.Y);
                         }
                     }
+                    s_registryBindReservedScratch.Clear();
                 }
             }
             finally
             {
                 NetNode.ReleaseConsumedList(entries);
             }
+        }
+
+        private static readonly HashSet<Mob> s_registryBindReservedScratch = new(ReferenceEqualityComparer.Instance);
+
+        /// <summary>
+        /// True when an unbound, type-matching tracked mob sits within the registry bind radius of
+        /// (x,y) — i.e. a future MOBREG bind can still claim this entry without a replica spawn.
+        /// </summary>
+        private static bool HasUnboundSameTypeCandidateNearLocked(string? type, double x, double y)
+        {
+            if (string.IsNullOrWhiteSpace(type) || !double.IsFinite(x) || !double.IsFinite(y))
+                return false;
+
+            var maxDistanceSq = ClientRegistryBindMaxDistancePx * ClientRegistryBindMaxDistancePx;
+            for (var i = 0; i < trackedMobs.Count; i++)
+            {
+                var mob = trackedMobs[i];
+                if (mob == null || s_registryBindReservedScratch.Contains(mob))
+                    continue;
+                if (MobToId.ContainsKey(mob))
+                    continue;
+                if (!DoesMobMatchStateType(mob, type))
+                    continue;
+
+                try
+                {
+                    var dx = GetWorldX(mob) - x;
+                    var dy = GetWorldY(mob) - y;
+                    if (dx * dx + dy * dy <= maxDistanceSq)
+                        return true;
+                }
+                catch
+                {
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -383,7 +452,11 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 secondBestCellExact == bestCellExact)
             {
                 var gap = Math.Sqrt(secondBestDistanceSq) - Math.Sqrt(bestDistanceSq);
-                if (!IsBossRelatedEntity(type) && gap < ClientStateRebindMinimumGapPx)
+                // Registry batch binds pass a reservation set: identical-position same-type
+                // candidates (group spawns like Flies) are interchangeable, and the reservation
+                // guarantees each local mob is consumed by at most one NetId in the batch. The
+                // ambiguity gap check would otherwise permanently refuse both entries.
+                if (reservedMobs == null && !IsBossRelatedEntity(type) && gap < ClientStateRebindMinimumGapPx)
                     return false;
             }
 

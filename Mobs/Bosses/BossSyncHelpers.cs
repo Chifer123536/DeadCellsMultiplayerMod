@@ -1,6 +1,7 @@
 using dc.en;
 using dc.en.mob;
 using DeadCellsMultiplayerMod;
+using System.Runtime.CompilerServices;
 
 namespace DeadCellsMultiplayerMod.Mobs.Bosses;
 
@@ -60,6 +61,13 @@ public static class BossSyncHelpers
     private static readonly string[] BossProxyPrefixTokens = { "BossRush", "Altered", "Modified", "Boss" };
     private static readonly string[] BossProxySuffixTokens = { "Proxy", "Clone", "BossRush", "Altered", "Modified", "Boss" };
 
+    // IsBossMob runs several times per frame per mob (dirty-queue observation, priority resync
+    // classification, targeting, HP scaling) and each call allocated via mob.type.ToString() plus
+    // up to 30 substring scans. Mob.type and the runtime class are immutable per mob instance
+    // (see HostMobObservedState.MobRef comment), so the type-based verdict can be memoized per
+    // instance. The level.boss identity check stays live: phase transitions re-point it.
+    private static readonly ConditionalWeakTable<Mob, StrongBox<bool>> s_typeVerdictCache = new();
+
     public static bool IsBossMob(Mob mob)
     {
         if (mob == null)
@@ -73,30 +81,7 @@ public static class BossSyncHelpers
             if (level != null && ReferenceEquals(level.boss, mob))
                 return true;
 
-            if (IsKnownBossRuntimeType(mob))
-                return true;
-
-            // Boss-owned helpers often share dc.en.mob.Boss or the .mob.boss namespace with their
-            // encounter owner. They must remain ordinary synchronized actors: treating a Giant
-            // hand, Conjunctivius tentacle, Mama Tick claw, Death scythe or projectile as a boss
-            // applies the strict boss AI/death lock and prevents its native attack lifecycle.
-            if (IsKnownBossComponentType(mob))
-                return false;
-
-            if (IsKnownBossProxyType(mob))
-                return true;
-
-            // Prefer the actual Dead Cells boss base type after excluding known helper families.
-            // Several DLC/Boss Rush bosses are generated through proxy types whose namespace/name
-            // does not reliably contain ".boss.", but they still inherit dc.en.mob.Boss.
-            if (mob is dc.en.mob.Boss)
-                return true;
-
-            // Namespace membership is not boss identity. Dead Cells keeps many boss-owned actors
-            // (arena hazards, weapons and appendages) beside their owner in the boss namespace.
-            // The native Boss base, Level.boss and the exact/decorated type table above cover the
-            // encounter owners without promoting every such helper into strict boss authority.
-            return false;
+            return GetTypeBasedBossVerdict(mob);
         }
         catch
         {
@@ -119,24 +104,50 @@ public static class BossSyncHelpers
             if (level != null && ReferenceEquals(level.boss, mob))
                 return true;
 
-            if (IsKnownBossRuntimeType(mob))
-                return true;
-
-            if (IsKnownBossComponentType(mob))
-                return false;
-
-            if (IsKnownBossProxyType(mob))
-                return true;
-
-            if (mob is dc.en.mob.Boss)
-                return true;
-
-            return false;
+            return GetTypeBasedBossVerdict(mob);
         }
         catch
         {
             return false;
         }
+    }
+
+    private static bool GetTypeBasedBossVerdict(Mob mob)
+    {
+        if (s_typeVerdictCache.TryGetValue(mob, out var cached))
+            return cached.Value;
+
+        var verdict = ComputeTypeBasedBossVerdict(mob);
+        s_typeVerdictCache.AddOrUpdate(mob, new StrongBox<bool>(verdict));
+        return verdict;
+    }
+
+    private static bool ComputeTypeBasedBossVerdict(Mob mob)
+    {
+        if (IsKnownBossRuntimeType(mob))
+            return true;
+
+        // Boss-owned helpers often share dc.en.mob.Boss or the .mob.boss namespace with their
+        // encounter owner. They must remain ordinary synchronized actors: treating a Giant
+        // hand, Conjunctivius tentacle, Mama Tick claw, Death scythe or projectile as a boss
+        // applies the strict boss AI/death lock and prevents its native attack lifecycle.
+        if (IsKnownBossComponentType(mob))
+            return false;
+
+        if (IsKnownBossProxyType(mob))
+            return true;
+
+        // Prefer the actual Dead Cells boss base type after excluding known helper families.
+        // Several DLC/Boss Rush bosses are generated through proxy types whose namespace/name
+        // does not reliably contain ".boss.", but they still inherit dc.en.mob.Boss.
+        if (mob is dc.en.mob.Boss)
+            return true;
+
+        // Namespace membership is not boss identity. Dead Cells keeps many boss-owned actors
+        // (arena hazards, weapons and appendages) beside their owner in the boss namespace.
+        // The native Boss base, Level.boss and the exact/decorated type table above cover the
+        // encounter owners without promoting every such helper into strict boss authority.
+        return false;
     }
 
     private static bool IsKnownBossComponentType(Mob mob)

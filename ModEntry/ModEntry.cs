@@ -44,6 +44,8 @@ using DeadCellsMultiplayerMod.UI;
 using DeadCellsMultiplayerMod.AdvancedCoop;
 
 
+using DeadCellsMultiplayerMod.Core.Services;
+
 namespace DeadCellsMultiplayerMod
 {
     public partial class ModEntry(ModInfo info) : ModBase(info),
@@ -439,6 +441,10 @@ namespace DeadCellsMultiplayerMod
         public void OnGameEndInit()
         {
             _ready = true;
+            // Main.ME.options does not exist during Initialize(); this is the earliest point the
+            // save-slot override can stick, and it is still before the title screen loads a User.
+            try { ApplySaveSlotEnvOverride(); }
+            catch (Exception ex) { Logger.Warning("[NetMod] DCCM_SAVE_SLOT override failed: {Message}", ex.Message); }
             LobbySession.SetRole(NetRole.None);
             s_steamOverlayCallbackPending = true;
             s_steamOverlayCallbackRetryCount = 0;
@@ -453,9 +459,73 @@ namespace DeadCellsMultiplayerMod
             TryEnsureSteamApiInitialized("OnGameEndInit", logFailure: true);
             TryParseConnectLobbyFromCommandLine();
         }
+
+        private static bool s_saveSlotOverrideApplied;
+
+        /// <summary>
+        /// Per-process save slot override for local co-op testing (two game processes on one
+        /// machine). options.curSlot lives in a shared config file, so both instances converge
+        /// on the same slot and can write the same user_N.dat concurrently — the corruption that
+        /// produced the NUL-byte modded.json crash loop. The env var is process-scoped. Retried
+        /// from Initialize and OnGameEndInit because Main.ME.options is only available later.
+        /// </summary>
+        private void ApplySaveSlotEnvOverride()
+        {
+            if (s_saveSlotOverrideApplied)
+                return;
+
+            var envSlot = Environment.GetEnvironmentVariable("DCCM_SAVE_SLOT");
+            if (string.IsNullOrWhiteSpace(envSlot))
+                return;
+            if (!int.TryParse(envSlot, out var slotOverride) || slotOverride < 0)
+                return;
+
+            var options = dc.Main.Class.ME?.options;
+            if (options == null)
+            {
+                Logger.Debug("[NetMod] DCCM_SAVE_SLOT={Slot}: options not available yet, will retry", slotOverride);
+                return;
+            }
+
+            options.curSlot = slotOverride;
+            s_saveSlotOverrideApplied = true;
+            Logger.Information("[NetMod] Save slot override from DCCM_SAVE_SLOT: {Slot}", slotOverride);
+        }
+
         public override void Initialize()
         {
             Instance = this;
+
+            // Per-process save slot override for local co-op testing (two game processes on one
+            // machine). options.curSlot lives in a shared config file, so both instances converge
+            // on the same slot and the vanilla title-screen User load picks the wrong profile —
+            // a new run then inherits the wrong progress and both processes write the same save
+            // file concurrently (corruption). Apply the override BEFORE anything loads a User.
+            // Deliberately not calling options.save(): the config file is shared with the other
+            // instance; the override is process-scoped only.
+            try
+            {
+                ApplySaveSlotEnvOverride();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning("[NetMod] DCCM_SAVE_SLOT override failed: {Message}", ex.Message);
+            }
+
+            // Crash-durable save protection BEFORE anything can load a save:
+            // 1) restore the MSave slot from backup when a previous launch crashed inside the
+            //    guarded parse window, 2) repair NUL/garbage JSON sidecars (user_N.modded.json /
+            //    user_N.coop.json) that would otherwise make ModCore SaveManager throw a fatal
+            //    JObject.Parse error on every subsequent launch.
+            try
+            {
+                LobbySession.RunMultiplayerSaveStartupRecovery(Logger);
+                LobbySession.SanitizeMultiplayerJsonSaves(Logger);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning("[NetMod][SaveGuard] startup save recovery failed: {Message}", ex.Message);
+            }
 
             InitializeOptionalModule(
                 DebugModuleId.MultiplayerModLang,
@@ -503,6 +573,7 @@ namespace DeadCellsMultiplayerMod
             s_steamOverlayCallbackPending = true;
             s_steamOverlayCallbackRetryCount = 0;
             EventSystem.BroadcastEvent<IOnAdvancedModuleInitializing, ModEntry>(this);
+            StartGameControlApiIfPresent();
 
             void InitializeOptionalModule(DebugModuleId moduleId, string moduleName, Action init)
             {
@@ -515,6 +586,26 @@ namespace DeadCellsMultiplayerMod
                 }
 
                 Logger.Information("[NetMod][Debug] Module disabled by settings: {Module}", moduleName);
+            }
+        }
+
+        /// <summary>
+        /// Optional local game-control API (HTTP, loopback, env-gated with DCCM_CONTROL_API=1).
+        /// The implementation lives in GameControl/ which is intentionally NOT in source control,
+        /// so it is started reflectively: when the type is absent (public build) this is a no-op.
+        /// </summary>
+        private void StartGameControlApiIfPresent()
+        {
+            try
+            {
+                var type = System.Reflection.Assembly.GetExecutingAssembly()
+                    .GetType("DeadCellsMultiplayerMod.GameControl.ControlApiServer");
+                var start = type?.GetMethod("Start", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                start?.Invoke(null, null);
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug("[NetMod] Game-control API not available: {Message}", ex.Message);
             }
         }
 
@@ -744,8 +835,14 @@ namespace DeadCellsMultiplayerMod
         private static readonly ConditionalWeakTable<BossRushDoor, object> s_bossRushDoorGfxDeferredPending = new();
 
         /// <summary>
-        /// Client-only: missing boss-rush door anim frames. Do not call <see cref="Assets.Class.lib.getLevel"/> for
-        /// BossRushZone from this hook — it can run during level/entity init and corrupt unrelated HL state (casts such as
+        /// Missing boss-rush door anim frames ("Unknown frame: bossRushDoor*") are an asset
+        /// settling race, not a client-only one: a HOST loading a continue-save that contains a
+        /// BossRushDoor hits the identical failure inside User.activateMainGame -> Level.onReload,
+        /// and the uncaught HashlinkError is a Fatal Error (observed live with an imported
+        /// completed single-player save). Guard both roles; the deferred retry re-runs orig on the
+        /// next main-thread pump once assets have settled, and the last resort clears spr.
+        /// Do not call <see cref="Assets.Class.lib.getLevel"/> for BossRushZone from this hook —
+        /// it can run during level/entity init and corrupt unrelated HL state (casts such as
         /// <c>tool.CPoint</c> vs <c>level.LevelMap</c>).
         /// </summary>
         private void Hook_BossRushDoor_initGfx(Hook_BossRushDoor.orig_initGfx orig, BossRushDoor self)
@@ -756,13 +853,14 @@ namespace DeadCellsMultiplayerMod
             }
             catch (Exception ex)
             {
-                if (_netRole != NetRole.Client || self == null || !IsBossRushDoorMissingFrameException(ex))
+                if (_netRole == NetRole.None || self == null || !IsBossRushDoorMissingFrameException(ex))
                     throw;
 
                 string? bossRushType = null;
                 try { bossRushType = self.bossRushType?.ToString(); } catch { }
 
-                Logger.Warning("[NetMod] BossRushDoor.initGfx failed on client level={LevelId}: type={Type} ({Msg})",
+                Logger.Warning("[NetMod] BossRushDoor.initGfx failed role={Role} level={LevelId}: type={Type} ({Msg})",
+                    _netRole,
                     levelId,
                     bossRushType ?? "null",
                     ex.Message);
@@ -785,7 +883,7 @@ namespace DeadCellsMultiplayerMod
                     }
                     catch (Exception ex2)
                     {
-                        if (_netRole != NetRole.Client || !IsBossRushDoorMissingFrameException(ex2))
+                        if (_netRole == NetRole.None || !IsBossRushDoorMissingFrameException(ex2))
                         {
                             Logger.Warning(ex2, "[NetMod] BossRushDoor.initGfx deferred retry unexpected error");
                             return;
@@ -1126,13 +1224,37 @@ namespace DeadCellsMultiplayerMod
             if (plays == null)
                 return result;
 
+            // This hook fires for EVERY animation of EVERY entity in the game (all mobs included).
+            // Identity checks are cheap proxy reads; the dc.String -> managed string conversion and
+            // the attack-name scan are not. Only pay them for the local hero's body/head managers.
+            var meRef = me;
+            if (meRef == null)
+                return result;
+
+            bool isHeroBody = false;
+            bool isHeroHead = false;
+            try
+            {
+                isHeroBody = meRef.spr?._animManager != null && ReferenceEquals(self, meRef.spr._animManager);
+                isHeroHead = !isHeroBody &&
+                             meRef.heroHead?.customHeadSpr?._animManager != null &&
+                             ReferenceEquals(self, meRef.heroHead.customHeadSpr._animManager);
+            }
+            catch
+            {
+                return result;
+            }
+
+            if (!isHeroBody && !isHeroHead)
+                return result;
+
             try
             {
                 var play = plays.ToString();
                 if (string.IsNullOrWhiteSpace(play))
                     return result;
 
-                if (me != null && me.spr?._animManager != null && ReferenceEquals(self, me.spr._animManager))
+                if (isHeroBody)
                 {
                     var isAttackAnim = IsAttackAnim(play);
                     var allowVisualOnlyWeaponAnim =
@@ -1146,9 +1268,7 @@ namespace DeadCellsMultiplayerMod
                         SendHeroAnim(play, queueAnim, g);
                     }
                 }
-
-                if (me != null && me.heroHead?.customHeadSpr != null &&
-                    ReferenceEquals(self, me.heroHead.customHeadSpr._animManager))
+                else
                 {
                     SendHeadAnim(play);
                 }
@@ -1170,10 +1290,34 @@ namespace DeadCellsMultiplayerMod
             Logger.Warning("[NetMod] Optional {Context} sync failed safely: {Message}", context, ex.Message);
         }
 
+        private static string SafeTrace(Func<string?> fn)
+        {
+            try { return fn() ?? "<null>"; } catch { return "<error>"; }
+        }
+
+
+        // Memoized: hero anim names come from a small fixed vocabulary, but the 13 substring scans
+        // ran on every single anim play of the hero (attack combos fire several per second).
+        private static readonly Dictionary<string, bool> s_attackAnimCache = new(StringComparer.Ordinal);
 
         private static bool IsAttackAnim(string anim)
         {
             if (string.IsNullOrWhiteSpace(anim)) return false;
+
+            if (s_attackAnimCache.TryGetValue(anim, out var cached))
+                return cached;
+
+            var verdict = IsAttackAnimCore(anim);
+            // Bounded: hero anim vocabulary is tiny; a clear-at-limit keeps a hostile/mismatched
+            // string flood from growing the dictionary.
+            if (s_attackAnimCache.Count >= 512)
+                s_attackAnimCache.Clear();
+            s_attackAnimCache[anim] = verdict;
+            return verdict;
+        }
+
+        private static bool IsAttackAnimCore(string anim)
+        {
             var a = anim.Trim();
             if (a.StartsWith("w_", StringComparison.OrdinalIgnoreCase)) return true;
             if (a.StartsWith("attack", StringComparison.OrdinalIgnoreCase)) return true;
@@ -1206,6 +1350,7 @@ namespace DeadCellsMultiplayerMod
             me._targetable = true;
             orig(self, oldLevel);
             var currentLevelId = GetCurrentLevelId();
+            Tools.GameTrace.Event("level", "onLevelChanged -> {LevelId} role={Role}", currentLevelId, _netRole);
             if (!string.IsNullOrWhiteSpace(currentLevelId))
                 SendLevel(currentLevelId);
             // A mid-run joiner's first level is where the host-approved spawn applies.
@@ -1257,6 +1402,7 @@ namespace DeadCellsMultiplayerMod
         {
             me = self;
             me._targetable = true;
+            Tools.GameTrace.Event("hero", "wakeup cell={CX},{CY} level={Level}", cx, cy, SafeTrace(() => lvl?.map?.id?.ToString()));
             _debugExplorerRevealAppliedSignature = string.Empty;
             orig(self, lvl, cx, cy);
             EnsureHeroVisibilityAfterRoomChange(me);

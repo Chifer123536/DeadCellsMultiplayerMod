@@ -96,8 +96,23 @@ namespace DeadCellsMultiplayerMod
             if (s_remoteKingRenderDetachedForTransition)
                 return;
 
+            // The per-frame pass used to marshal groupName to a managed string for every sprite of
+            // every remote king, every frame, purely to detect a broken anim group. A broken group
+            // does not heal by itself, so a ~5Hz sweep detects it just as well; event-driven
+            // callers (door preflight, transitions) still get an immediate check.
+            if (string.Equals(reason, "frame", StringComparison.Ordinal))
+            {
+                var now = Stopwatch.GetTimestamp();
+                if (now < s_nextFrameGuardTicks)
+                    return;
+                s_nextFrameGuardTicks = now + (long)(Stopwatch.Frequency * FrameGuardIntervalSeconds);
+            }
+
             GuardRemoteKingSprites(reason, detachForTransition: false);
         }
+
+        private const double FrameGuardIntervalSeconds = 0.2;
+        private static long s_nextFrameGuardTicks;
 
         internal static void PrepareRemoteKingsForLevelTransition(string reason)
         {
@@ -414,13 +429,17 @@ namespace DeadCellsMultiplayerMod
 
         private static bool EnsureSpriteAnimationGroup(HSprite? sprite, string fallbackGroup, out string before, out string after)
         {
-            before = ReadGroupName(sprite);
-            after = before;
+            // Happy path must not allocate: before/after names are only consumed by the repair
+            // log, so read them lazily once we know the group is actually broken.
+            before = "<unknown>";
+            after = "<unknown>";
             if (sprite == null)
                 return true;
 
             if (HasValidAnimationGroup(sprite))
                 return true;
+
+            before = ReadGroupName(sprite);
 
             try
             {
@@ -465,8 +484,11 @@ namespace DeadCellsMultiplayerMod
 
             try
             {
+                // dc.String.length is a cheap native read; ToString() would marshal + allocate a
+                // managed string on every sprite check. A zero-length group is the broken state
+                // this guard exists for; whitespace-only groups do not occur in game data.
                 var group = sprite.groupName;
-                return group != null && !string.IsNullOrWhiteSpace(group.ToString());
+                return group != null && group.length > 0;
             }
             catch
             {

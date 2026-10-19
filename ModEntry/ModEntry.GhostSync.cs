@@ -349,11 +349,52 @@ namespace DeadCellsMultiplayerMod
         double last_x, last_y;
         int lastDir;
 
+        // Position send runs every hero frame; map.id.ToString() + Trim() allocated per frame for a
+        // value that only changes on level transition. Cache keyed on the map proxy reference.
+        private dc.level.LevelMap? _cachedPosLevelMap;
+        private string _cachedPosLevelId = string.Empty;
+
         private void ResetLocalHeroPositionSendCache()
         {
             last_x = 0;
             last_y = 0;
             lastDir = 0;
+            _cachedPosLevelMap = null;
+            _cachedPosLevelId = string.Empty;
+        }
+
+        private string GetPositionLevelIdCached()
+        {
+            dc.level.LevelMap? map = null;
+            try { map = me?._level?.map; } catch { }
+
+            if (map != null && ReferenceEquals(map, _cachedPosLevelMap) && _cachedPosLevelId.Length > 0)
+                return _cachedPosLevelId;
+
+            string id;
+            try
+            {
+                id = map?.id?.ToString() ?? string.Empty;
+            }
+            catch
+            {
+                id = string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                // Fallback to the last known level id field. Must NOT call GetCurrentLevelId():
+                // that method delegates here, which would recurse.
+                id = string.IsNullOrWhiteSpace(levelId) ? string.Empty : levelId.Trim();
+            }
+
+            if (map != null && id.Length > 0)
+            {
+                _cachedPosLevelMap = map;
+                _cachedPosLevelId = id;
+            }
+
+            return id;
         }
 
         private void SendHeroCoords()
@@ -364,7 +405,7 @@ namespace DeadCellsMultiplayerMod
 
             // Always send X/Y/dir. Skipping unchanged frames let peer GhostKing physics drift
             // the remote Y while the local player stood still (no correction packets).
-            var positionLevelId = me._level?.map?.id?.ToString() ?? GetCurrentLevelId();
+            var positionLevelId = GetPositionLevelIdCached();
             _net.TickSend(me.spr.x, me.spr.y, dir, positionLevelId);
             last_x = me.spr.x;
             last_y = me.spr.y;

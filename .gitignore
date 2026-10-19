@@ -10,3 +10,12 @@ last_error.txt
 log_*.log
 .cursorrules
 _Phase*
+
+# Local game-control API playground (never committed)
+API/
+GameControl/
+GameControlAPI/
+*.local.md
+FINAL_STATUS.txt
+REFACTORING_RESULTS.txt
+README_REFACTORING.txt

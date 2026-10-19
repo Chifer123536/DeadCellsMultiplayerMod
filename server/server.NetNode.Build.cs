@@ -156,13 +156,26 @@ public sealed partial class NetNode
 
     private static string BuildPosLine(int id, double cx, double cy, int dir, string? levelId = null, long positionSequence = 0)
     {
-        var safeLevelId = (levelId ?? string.Empty)
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{id}|{cx}|{cy}|{dir}|{SanitizeWireToken(levelId)}|{positionSequence}\n");
+    }
+
+    /// <summary>
+    /// Level ids never contain | \r \n in practice, but the protocol needs the guarantee. Checking
+    /// for the characters first keeps the position path (one send per hero per frame) allocation
+    /// free for the normal case instead of paying three Replace scans per packet.
+    /// </summary>
+    private static string SanitizeWireToken(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        if (value.IndexOf('|') < 0 && value.IndexOf('\r') < 0 && value.IndexOf('\n') < 0)
+            return value;
+
+        return value
             .Replace("|", "/", StringComparison.Ordinal)
             .Replace("\r", string.Empty, StringComparison.Ordinal)
             .Replace("\n", string.Empty, StringComparison.Ordinal);
-
-        return string.Create(
-            CultureInfo.InvariantCulture,
-            $"{id}|{cx}|{cy}|{dir}|{safeLevelId}|{positionSequence}\n");
     }
 }

@@ -99,6 +99,7 @@ namespace DeadCellsMultiplayerMod
             // Terminal launch signal, outside the lock because it performs a network send.
             // On the client this also stops the host's launch beacon; on the host it publishes the
             // run-live state that a late joiner replays.
+            Tools.GameTrace.Event("net", "mark in run (hero live) role={Role}", _role);
             SendRunReadyFromHero();
         }
 
@@ -135,6 +136,9 @@ namespace DeadCellsMultiplayerMod
 
             if (role != NetRole.Host)
                 StopHostRunLaunchBeacon($"role_changed_to_{role}");
+
+            if (previous != role)
+                Tools.GameTrace.Event("net", "role changed {Previous} -> {Role}", previous, role);
 
             RunLaunchCoordinator.OnRoleChanged(previous, role);
             if (previous == NetRole.Client && role != NetRole.Client)

@@ -63,6 +63,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             var update = new NetNode.MobEventUpdate(mobSyncId, x, y, dir, SingleEvent(attackEvent), mobType, identityToken);
             MobSyncTrace.LogSendMobEvents(MobSyncNetRoleForTrace(net), SingleUpdate(update));
             net.SendMobEvents(SingleUpdate(update));
+            Tools.GameTrace.Event("mob", "host sent attack syncId={SyncId} skill={Skill} targetUser={TargetUser} seq={Seq}",
+                mobSyncId, skillId, targetUserId, attackSeq);
             
             // For bosses, force a state sync immediately after attack to sync spawned entities
             if (BossSyncHelpers.IsBossMob(mob))

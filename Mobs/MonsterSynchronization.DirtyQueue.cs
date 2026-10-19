@@ -97,6 +97,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
         private static readonly HashSet<int> hostDirtyQueuedSyncIds = new();
         private static readonly Dictionary<int, double> hostLastSendFrameBySyncId = new();
         private static readonly Dictionary<int, ClientDrawObservedState> clientObservedDrawStateBySyncId = new();
+        private static readonly Dictionary<int, double> clientDrawHeartbeatFrameBySyncId = new();
         private static readonly Dictionary<int, ClientMobDirtyFlags> clientDirtyFlagsBySyncId = new();
         private static readonly Queue<int> clientDirtyMobQueue = new();
         private static readonly HashSet<int> clientDirtyQueuedSyncIds = new();
@@ -280,16 +281,37 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             lock (Sync)
             {
                 var current = new ClientDrawObservedState(isOutOfGame, isOnScreen);
+                var frame = GetCurrentFrame(mob);
                 if (!clientObservedDrawStateBySyncId.TryGetValue(syncId, out var previous))
                 {
                     clientObservedDrawStateBySyncId[syncId] = current;
+                    clientDrawHeartbeatFrameBySyncId[syncId] = frame;
                     EnqueueClientMobDirtyLocked(syncId, ClientMobDirtyFlags.Draw | ClientMobDirtyFlags.ForceDraw);
                     return;
                 }
 
                 clientObservedDrawStateBySyncId[syncId] = current;
                 if (previous.IsOutOfGame != current.IsOutOfGame || previous.IsOnScreen != current.IsOnScreen)
+                {
+                    clientDrawHeartbeatFrameBySyncId[syncId] = frame;
                     EnqueueClientMobDirtyLocked(syncId, ClientMobDirtyFlags.Draw);
+                    return;
+                }
+
+                // Interest heartbeat. MOBDRAW travels unreliable and the change-gate above dedupes
+                // against the last sent value: if the draw that granted interest is lost and the
+                // visibility state never changes again, the host relevance gate stays closed
+                // forever and the mob freezes for this client (states/moves stop streaming). 
+                // Re-assert interest on a slow cadence so a lost draw self-heals.
+                if (!current.IsOutOfGame)
+                {
+                    clientDrawHeartbeatFrameBySyncId.TryGetValue(syncId, out var lastBeatFrame);
+                    if (frame - lastBeatFrame >= ClientDrawHeartbeatIntervalFrames)
+                    {
+                        clientDrawHeartbeatFrameBySyncId[syncId] = frame;
+                        EnqueueClientMobDirtyLocked(syncId, ClientMobDirtyFlags.ForceDraw);
+                    }
+                }
             }
         }
 
@@ -383,6 +405,9 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 flags = HostMobDirtyFlags.None;
                 mob = null;
 
+                // Single lock acquisition: flags removal and mob resolution used to happen under
+                // two separate locks, which let a concurrent RemoveTrackedMobLocked slip between
+                // them and silently drop the pending update (only the 8-frame keyframe healed it).
                 lock (Sync)
                 {
                     if (hostDirtyMobQueue.Count <= 0)
@@ -394,10 +419,6 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         continue;
 
                     hostDirtyFlagsBySyncId.Remove(syncId);
-                }
-
-                lock (Sync)
-                {
                     mob = ResolveMobBySyncIdLocked(syncId);
                 }
 
@@ -425,10 +446,6 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         continue;
 
                     clientDirtyFlagsBySyncId.Remove(syncId);
-                }
-
-                lock (Sync)
-                {
                     mob = ResolveMobBySyncIdLocked(syncId);
                 }
 
@@ -701,15 +718,20 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
             // Pass 1: bosses
             if (sendBoss)
-                FlushHostPriorityResyncPass(net, preferBoss: true, preferActive: false, includeAll: false);
+                FlushHostPriorityResyncPass(net, preferBoss: true, preferActive: false, includeAll: false, bootstrap: false);
 
             // Pass 2: active/visible non-boss
             if (sendActive)
-                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: true, includeAll: false);
+                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: true, includeAll: false, bootstrap: false);
 
             // Pass 3: budgeted catch-up for remaining tracked mobs
             if (sendCatchUp)
-                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: false, includeAll: true);
+            {
+                var bootstrapping = false;
+                lock (Sync)
+                    bootstrapping = s_hostAuthoritativeBootstrapResyncsRemaining > 0;
+                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: false, includeAll: true, bootstrap: bootstrapping);
+            }
 
             s_batchMobsScratch.Clear();
         }
@@ -718,7 +740,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             NetNode net,
             bool preferBoss,
             bool preferActive,
-            bool includeAll)
+            bool includeAll,
+            bool bootstrap)
         {
             s_batchSnapshotsScratch.Clear();
             var stateBytes = GetWireLineBaseBytes("MOBSTATE|");
@@ -730,6 +753,19 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 if (mob == null)
                     continue;
 
+                if (!TryGetMobSyncId(mob, out var syncId) || syncId < 0)
+                    continue;
+
+                // Steady-state catch-up is repair traffic for mobs clients actually track. A mob
+                // with no registered client interest is already skipped by the dirty queue
+                // (Phase 16 relevance gate); force-rebuilding its full state payload here was
+                // the dominant HostFlush cost (~35ms median per catch-up with 80+ tracked mobs)
+                // for packets nobody consumes. Bootstrap bursts stay ungated so a freshly
+                // connected client is covered before it can send any MOBDRAW.
+                if (includeAll && !bootstrap && !IsMobClientVisibleForSync(syncId))
+                    continue;
+
+                var priority = GetHostMobSyncPriority(mob);
                 var isBoss = BossSyncHelpers.IsBossMob(mob);
                 if (preferBoss && !isBoss)
                     continue;
@@ -737,20 +773,14 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 {
                     if (isBoss)
                         continue;
-                    if (GetHostMobSyncPriority(mob) != HostMobSyncPriority.Active)
+                    if (priority != HostMobSyncPriority.Active)
                         continue;
                 }
                 else if (!preferBoss && !includeAll)
                 {
                     continue;
                 }
-                else if (includeAll && !preferBoss && !preferActive)
-                {
-                    // Catch-up pass includes everyone not already covered this flush by dirty queue.
-                }
 
-                if (!TryGetMobSyncId(mob, out var syncId) || syncId < 0)
-                    continue;
                 if (!TryBuildHostMobDeltaSnapshot(
                         mob,
                         syncId,
@@ -758,7 +788,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         out var sendState,
                         out var stateSnapshot,
                         out _,
-                        priorityHint: GetHostMobSyncPriority(mob)) || !sendState)
+                        priorityHint: priority) || !sendState)
                 {
                     continue;
                 }
@@ -1014,6 +1044,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 hostDirtyMobQueue.Dequeue();
 
             clientObservedDrawStateBySyncId.Clear();
+            clientDrawHeartbeatFrameBySyncId.Clear();
             clientDirtyFlagsBySyncId.Clear();
             clientDirtyQueuedSyncIds.Clear();
             while (clientDirtyMobQueue.Count > 0)
@@ -1063,7 +1094,16 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
         private static int GetUtf8WireLength(string? value)
         {
-            return string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
+            if (string.IsNullOrEmpty(value))
+                return 0;
+
+            // Payloads are wire-encoded ASCII except for URI-escaped type/anim tokens, whose
+            // non-ASCII bytes are already percent-encoded (3 chars each). UTF8.GetByteCount walked
+            // every string of every snapshot on every flush; a char count is within a byte of the
+            // truth for escaped payloads, and the byte budget is a soft batching limit, not a
+            // correctness constraint. Strings with raw non-ASCII (should not occur post-escape)
+            // get the same small underestimate the old estimator's fallback tolerated.
+            return value.Length;
         }
 
         private static int GetInvariantWireLength(int value)

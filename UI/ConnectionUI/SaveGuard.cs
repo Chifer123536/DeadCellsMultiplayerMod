@@ -117,6 +117,88 @@ namespace DeadCellsMultiplayerMod
             }
         }
 
+        /// <summary>
+        /// Startup self-heal for the JSON sidecar files of the multiplayer save store.
+        ///
+        /// ModCore's SaveManager parses <c>MSave/user_N.modded.json</c> via JObject.Parse WITHOUT a
+        /// try/catch inside OnAfterLoadingSave. The multiplayer save redirect (Hook__Save_fileName)
+        /// points that path into MSave while a session is active, so a sidecar corrupted by an
+        /// interrupted write — the process being killed mid-shutdown while the world syncer was
+        /// tearing down produces exactly the observed NUL-byte content — turns every subsequent
+        /// launch into an unrecoverable Fatal Error crash loop ("Error reading JObject from
+        /// JsonReader. Path '', line 1, position 2").
+        ///
+        /// Repair policy: a .modded.json that fails to parse is replaced with "{}" (the same
+        /// content SaveManager writes for a fresh slot); a corrupt .coop.json is deleted (MUser
+        /// treats a missing file as "no coop id", which is the safe state).
+        /// </summary>
+        internal static void SanitizeMultiplayerJsonSaves(Serilog.ILogger? logger = null)
+        {
+            var log = logger ?? _log;
+            try
+            {
+                var folder = GetAbsoluteSavePath(MultiplayerSaveFolderName);
+                if (!System.IO.Directory.Exists(folder))
+                    return;
+
+                foreach (var path in System.IO.Directory.GetFiles(folder, "*.json"))
+                {
+                    try
+                    {
+                        if (IsValidJsonObjectFile(path))
+                            continue;
+
+                        var name = System.IO.Path.GetFileName(path);
+                        if (name.EndsWith(".modded.json", System.StringComparison.Ordinal))
+                        {
+                            // Keep the slot alive: SaveManager only needs a parseable object here.
+                            System.IO.File.Copy(path, path + ".corrupt", overwrite: true);
+                            System.IO.File.WriteAllText(path, "{}");
+                            log?.Warning("[NetMod][SaveGuard] Repaired corrupt modded save sidecar: {Path}", name);
+                        }
+                        else if (name.EndsWith(".coop.json", System.StringComparison.Ordinal))
+                        {
+                            // Coop metadata is regenerable; a missing file is handled by MUser.
+                            System.IO.File.Move(path, path + ".corrupt", overwrite: true);
+                            log?.Warning("[NetMod][SaveGuard] Quarantined corrupt coop metadata: {Path}", name);
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        log?.Debug("[NetMod][SaveGuard] sidecar sanitize failed for {Path}: {Message}", path, ex.Message);
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                log?.Debug("[NetMod][SaveGuard] sanitize sweep failed: {Message}", ex.Message);
+            }
+        }
+
+        private static bool IsValidJsonObjectFile(string path)
+        {
+            try
+            {
+                var text = System.IO.File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(text))
+                    return false;
+
+                // Fast rejection of NUL-padded files without a parse attempt.
+                for (var i = 0; i < text.Length; i++)
+                {
+                    if (text[i] == '\0')
+                        return false;
+                }
+
+                _ = Newtonsoft.Json.Linq.JObject.Parse(text);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         internal static void RunMultiplayerSaveStartupRecovery(Serilog.ILogger? logger = null)
         {
             var log = logger ?? _log;

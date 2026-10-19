@@ -48,6 +48,14 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
         private static void ConsumeIncomingMobDies(NetNode net)
         {
+            // Check quiesce BEFORE dequeuing: TryConsume removes packets from the pending queue, so
+            // draining during a level transition silently discarded reliable MOBDIE packets — a mob
+            // then stayed alive for one player only (no watchdog for non-bosses). Leaving them queued
+            // is safe: after the transition the generation check rejects stale-level packets, and
+            // current-level packets apply normally.
+            if (IsSyncQuiescedForTransition())
+                return;
+
             if (!net.TryConsumeMobDies(out var dies))
                 return;
 
@@ -57,9 +65,6 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
                 // Host is authoritative for mob death. Ignore remote client die packets.
                 if (net.IsHost)
-                    return;
-
-                if (IsSyncQuiescedForTransition())
                     return;
 
                 ApplyIncomingMobDies(dies);
@@ -101,6 +106,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         // locked camera and no rewards. Buffer boss-typed packets for retry and
                         // bounded escalation instead of losing them.
                         RememberUnresolvedBossDieLocked(die);
+                        Tools.GameTrace.Event("mob", "client MOBDIE unresolved syncId={SyncId} gen={Gen} type={Type} (boss-buffered={Boss})",
+                            die.MobIndex, die.Generation, die.Type ?? string.Empty, BossSyncHelpers.IsBossTypeSignature(die.Type));
                         continue;
                     }
 
@@ -160,6 +167,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                             mob.onDie();
                         });
                     });
+
+                    Tools.GameTrace.Event("mob", "client applied authoritative death type={Type}", mob.GetType().Name);
 
                     if (BossSyncHelpers.IsBossMob(mob) && IsCompletedAuthoritativeBossDeath(mob))
                     {

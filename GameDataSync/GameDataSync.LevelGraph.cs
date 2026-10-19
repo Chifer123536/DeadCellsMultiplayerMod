@@ -444,6 +444,14 @@ namespace DeadCellsMultiplayerMod
             lock (_levelGraphLock)
             {
                 _remoteLevelGraphs.Clear();
+                // The sequence watermarks MUST be cleared together with the cached graphs. The
+                // host re-broadcasts its cached level graphs after a same-run restart with the
+                // SAME sequence numbers; keeping the watermarks made every re-broadcast look
+                // "stale" (seq <= last), so the client never received the graph again, generated
+                // its own layout and aborted the session with WORLD DESYNC (observed live:
+                // "Ignored stale level graph seq=6 last=6" -> "WORLD DESYNC ... aborted").
+                _lastReceivedLevelGraphSequenceByLevelId.Clear();
+                _lastAppliedLevelGraphSequenceByLevelId.Clear();
                 Monitor.PulseAll(_levelGraphLock);
             }
 

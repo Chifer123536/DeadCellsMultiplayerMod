@@ -94,7 +94,7 @@ public partial class InteractionSync
         var hero = ModEntry.me;
         if (hero != null && ReferenceEquals(hero._level, level))
         {
-            if (!SafeRead(() => hero.destroyed, true) && SafeRead(() => hero.life, 0) > 0)
+            if (IsEntityAliveForProximity(hero))
             {
                 var (hx, hy) = GetEntityPixelPos(hero);
                 var dx = hx - doorX;
@@ -111,7 +111,7 @@ public partial class InteractionSync
                 continue;
             if (!ReferenceEquals(client._level, level))
                 continue;
-            if (SafeRead(() => client.destroyed, true) || SafeRead(() => client.life, 0) <= 0)
+            if (!IsEntityAliveForProximity(client))
                 continue;
 
             var (cx, cy) = GetEntityPixelPos(client);
@@ -124,13 +124,54 @@ public partial class InteractionSync
         return false;
     }
 
+    /// <summary>
+    /// Inline try/catch replacement for SafeRead(lambda) pairs: this runs per door per frame and
+    /// each capturing lambda allocated a closure + delegate.
+    /// </summary>
+    private static bool IsEntityAliveForProximity(Entity entity)
+    {
+        try
+        {
+            return !entity.destroyed && entity.life > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void ApplyDoorDie(Door door)
     {
         _openedDoors.Remove(door);
-        if (!SafeRead(() => door.broken, false))
+        if (!IsDoorBroken(door))
         {
             door.life = 0;
             door.onDie();
+        }
+    }
+
+    /// <summary>Inline replacement for per-frame SafeRead(lambda) closure allocations.</summary>
+    private static bool IsDoorBroken(Door door)
+    {
+        try
+        {
+            return door.broken;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsDoorGone(Door door)
+    {
+        try
+        {
+            return door.destroyed || door.broken;
+        }
+        catch
+        {
+            return true;
         }
     }
 
@@ -141,6 +182,15 @@ public partial class InteractionSync
             return;
 
         var now = System.Environment.TickCount64;
+
+        // Polling every door's native state costs several cached-reflection reads + boxed numeric
+        // conversions per door per frame. Door transitions are seconds-long animations; a 100ms
+        // poll is indistinguishable to the receiving client while cutting this to ~10% of the
+        // per-frame cost. The 2s heartbeat below still guarantees convergence after packet loss.
+        if (now - _lastDoorPollTickMs < DoorStatePollIntervalMs)
+            return;
+        _lastDoorPollTickMs = now;
+
         var cache = GetInteractionCache(level);
 
         for (var i = 0; i < cache.Doors.Count; i++)
@@ -165,9 +215,12 @@ public partial class InteractionSync
         }
     }
 
+    private const int DoorStatePollIntervalMs = 100;
+    private long _lastDoorPollTickMs;
+
     private string GetAuthoritativeDoorState(Door door)
     {
-        if (SafeRead(() => door.broken, false))
+        if (IsDoorBroken(door))
             return "state_broken";
 
         // A locked door is script-controlled (boss arena seals). Never advertise it as open:
@@ -431,7 +484,7 @@ public partial class InteractionSync
         {
             try
             {
-                if (door == null || SafeRead(() => door.destroyed, true) || SafeRead(() => door.broken, false))
+                if (door == null || IsDoorGone(door))
                 {
                     _scratchDoorsToRemove.Add(door!);
                     continue;
@@ -444,7 +497,7 @@ public partial class InteractionSync
                 var (doorX, doorY) = GetDoorStableAnchor(door);
                 if (IsAnyPlayerNearby(level, doorX, doorY))
                     continue;
-                if (SafeRead(() => door.broken, false))
+                if (IsDoorBroken(door))
                     continue;
 
                 _scratchDoorsToClose.Add(door);

@@ -33,6 +33,31 @@ namespace DeadCellsMultiplayerMod.Ghost
         private string _activeKindId = string.Empty;
         private bool _meleeSwingActive;
         private readonly HashSet<string> _quarantinedKinds = new(StringComparer.OrdinalIgnoreCase);
+
+        // Per-frame verdict memoization. GetWeaponKindId allocates (Param0.ToString()) and
+        // RequiresVisualOnlyRemoteReplay runs five chained Replace allocations through
+        // CompactWeaponId — for every remote player, every frame, to re-decide something that can
+        // only change when the equipped InventItem instance changes.
+        private InventItem? _verdictItemRef;
+        private string _verdictKindId = string.Empty;
+        private bool _verdictVisualOnly;
+
+        private bool TryGetCachedWeaponVerdict(InventItem item, out string kindId, out bool visualOnly)
+        {
+            if(ReferenceEquals(_verdictItemRef, item))
+            {
+                kindId = _verdictKindId;
+                visualOnly = _verdictVisualOnly;
+                return true;
+            }
+
+            kindId = GetWeaponKindId(item) ?? string.Empty;
+            visualOnly = KingWeaponSupport.RequiresVisualOnlyRemoteReplay(kindId);
+            _verdictItemRef = item;
+            _verdictKindId = kindId;
+            _verdictVisualOnly = visualOnly;
+            return false;
+        }
         private readonly HashSet<string> _visualOnlyNoticeKinds = new(StringComparer.OrdinalIgnoreCase);
 
         public bool IsShieldActive => _shieldActive;
@@ -79,8 +104,8 @@ namespace DeadCellsMultiplayerMod.Ghost
             var item = GetWeaponItem(pendingSlot);
             if(item == null || item.kind?.Index == InventItemKind.Indexes.Meta) return;
 
-            var kindId = GetWeaponKindId(item) ?? string.Empty;
-            if(KingWeaponSupport.RequiresVisualOnlyRemoteReplay(kindId))
+            TryGetCachedWeaponVerdict(item, out var kindId, out var visualOnly);
+            if(visualOnly)
             {
                 EnterVisualOnlyMode(item, kindId, "known-unsafe");
                 return;

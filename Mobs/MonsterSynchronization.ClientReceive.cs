@@ -887,14 +887,17 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
         private static void ConsumeIncomingHostMobAttacks(NetNode net)
         {
+            // Quiesce check before dequeue so reliable attack events survive a level transition
+            // instead of being drained and discarded (invisible attacks after doors).
+            if (IsSyncQuiescedForTransition())
+                return;
+
             if (!net.TryConsumeMobAttacks(out var attacks))
                 return;
 
             try
             {
                 MobSyncTrace.LogRecvAttacks("hostAttacksFromHost", attacks);
-                if (IsSyncQuiescedForTransition())
-                    return;
                 ApplyIncomingHostMobAttacks(attacks);
             }
             finally
@@ -938,6 +941,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 if (mob == null)
                 {
                     QueuePendingClientBossAttack(attack);
+                    Tools.GameTrace.Event("mob", "client attack buffered (unresolved) syncId={SyncId} skill={Skill}", attack.Index, attack.SkillId);
                     continue;
                 }
 
@@ -958,16 +962,18 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             LogRejectedPacketGeneration("hostAttackOnClient", rejectedCount, rejectedGeneration);
         }
 
+        /// <summary>
+        /// Buffers an attack whose sync id did not resolve this frame so a later retry can still
+        /// play it. Bosses need this across phase rebuilds; NORMAL mobs need it too — a runtime
+        /// spawn whose MOBREG has not landed yet (or a mid-rebind wrapper churn) previously dropped
+        /// the attack outright, which is the "mob never attacks on one client" symptom. The retry
+        /// window is short (see ClientPendingBossAttackRetryFrames) and the cap evicts oldest, so
+        /// non-boss buffering cannot starve bosses in practice.
+        /// </summary>
         private static void QueuePendingClientBossAttack(NetNode.MobAttack attack)
         {
             lock (Sync)
             {
-                var expectedType = attack.Type;
-                if (string.IsNullOrWhiteSpace(expectedType))
-                    hostMobTypeBySyncId.TryGetValue(attack.Index, out expectedType);
-                if (!BossSyncHelpers.IsBossTypeSignature(expectedType))
-                    return;
-
                 if (clientPendingBossAttacks.Count >= ClientPendingBossAttackLimit)
                     clientPendingBossAttacks.RemoveAt(0);
 
@@ -1296,15 +1302,34 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             }
             catch (Exception ex)
             {
+                bool poisoned;
+                int failures;
                 lock (Sync)
                 {
-                    s_poisonedOldSkillReplays.Add(replayKey);
+                    s_oldSkillReplayFailures.TryGetValue(replayKey, out failures);
+                    failures++;
+                    s_oldSkillReplayFailures[replayKey] = failures;
+                    poisoned = failures >= OldSkillReplayPoisonThreshold;
+                    if (poisoned)
+                        s_poisonedOldSkillReplays.Add(replayKey);
                 }
-                Log.Warning(ex, "[MobsSync] Client oldSkill execute failed (replay poisoned for this session): {SkillId}", normalizedSkillId);
+
+                if (poisoned)
+                    Log.Warning(ex, "[MobsSync] Client oldSkill execute failed {Failures}x (replay poisoned for this session): {SkillId}", failures, normalizedSkillId);
+                else
+                    Log.Warning(ex, "[MobsSync] Client oldSkill execute failed ({Failures}/{Threshold}), will retry: {SkillId}", failures, OldSkillReplayPoisonThreshold, normalizedSkillId);
             }
         }
 
         private static readonly HashSet<string> s_poisonedOldSkillReplays = new(StringComparer.Ordinal);
+        private static readonly Dictionary<string, int> s_oldSkillReplayFailures = new(StringComparer.Ordinal);
+        /// <summary>
+        /// Failures allowed per (type, skill) before the replay is poisoned for the session. One
+        /// transient failure (mob mid-transition, detached level) used to disable the attack
+        /// permanently — that is the "attack became invisible" symptom. Repeated failures mean the
+        /// native body genuinely crashes on replay and must stay blocked.
+        /// </summary>
+        private const int OldSkillReplayPoisonThreshold = 3;
 
         private static void ProcessClientOldSkillPrepare(Mob mob, string rawSkillId, ClientMobAttackIntent intent)
         {

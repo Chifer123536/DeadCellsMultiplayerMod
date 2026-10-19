@@ -45,7 +45,18 @@ public partial class InteractionSync
             if (button == null)
                 continue;
 
-            var isActivated = SafeRead(() => button.isActivated(), false);
+            // Inline try/catch instead of SafeRead(lambda): the lambda captured `button`, so every
+            // poll of every button allocated a closure + delegate per frame.
+            bool isActivated;
+            try
+            {
+                isActivated = button.isActivated();
+            }
+            catch
+            {
+                isActivated = false;
+            }
+
             if (!_buttonActivationState.TryGetValue(button, out var wasActivated))
             {
                 // Establish a baseline. A button that was already active when the level became ready

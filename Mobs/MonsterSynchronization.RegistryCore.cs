@@ -207,6 +207,14 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 registryCount,
                 generationAfterRebuild,
                 s_levelIdentityToken);
+            Tools.GameTrace.Event(
+                "mob",
+                "registry rebuilt role={Role} level={Level} tracked={Tracked} generation={Gen} nextSyncId={Next}",
+                role,
+                levelId,
+                trackedAfterRebuild,
+                generationAfterRebuild,
+                nextRuntimeSyncId);
 
             lock (Sync)
             {

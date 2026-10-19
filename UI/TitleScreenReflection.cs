@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using dc.pr;
 using ModCore.Utilities;
@@ -6,20 +7,73 @@ namespace DeadCellsMultiplayerMod.UI
 {
     internal static class TitleScreenReflection
     {
+        // GetMemberValue runs on per-frame paths (gamepad camera binding polling). Type.GetProperty
+        // with BindingFlags.IgnoreCase does a full metadata walk + case-insensitive compare every
+        // call; cache the resolved accessor per (type, name). Not-found results are cached too.
+        private static readonly ConcurrentDictionary<(Type, string, bool), MemberAccessor?> s_memberCache = new();
+
+        private sealed class MemberAccessor
+        {
+            public readonly PropertyInfo? Property;
+            public readonly FieldInfo? Field;
+
+            public MemberAccessor(PropertyInfo? property, FieldInfo? field)
+            {
+                Property = property;
+                Field = field;
+            }
+
+            public object? GetValue(object instance)
+            {
+                if (Property != null) return Property.GetValue(instance);
+                return Field?.GetValue(instance);
+            }
+
+            public bool TrySetValue(object instance, object? value)
+            {
+                if (Property != null)
+                {
+                    if (!Property.CanWrite) return false;
+                    Property.SetValue(instance, value);
+                    return true;
+                }
+                if (Field != null)
+                {
+                    Field.SetValue(instance, value);
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        private static MemberAccessor? ResolveMember(Type type, string name, bool ignoreCase)
+        {
+            return s_memberCache.GetOrAdd((type, name, ignoreCase), static key =>
+            {
+                const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                var flags = key.Item3 ? Flags | BindingFlags.IgnoreCase : Flags;
+                try
+                {
+                    var prop = key.Item1.GetProperty(key.Item2, flags);
+                    if (prop != null) return new MemberAccessor(prop, null);
+
+                    var field = key.Item1.GetField(key.Item2, flags);
+                    if (field != null) return new MemberAccessor(null, field);
+                }
+                catch { }
+
+                return null;
+            });
+        }
+
         public static object? GetMemberValue(object? obj, string name, bool ignoreCase)
         {
             if (obj == null || string.IsNullOrWhiteSpace(name)) return null;
 
-            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-            var type = obj.GetType();
-            var flags = ignoreCase ? Flags | BindingFlags.IgnoreCase : Flags;
             try
             {
-                var prop = type.GetProperty(name, flags);
-                if (prop != null) return prop.GetValue(obj);
-
-                var field = type.GetField(name, flags);
-                if (field != null) return field.GetValue(obj);
+                var accessor = ResolveMember(obj.GetType(), name, ignoreCase);
+                return accessor?.GetValue(obj);
             }
             catch { }
 
@@ -30,23 +84,10 @@ namespace DeadCellsMultiplayerMod.UI
         {
             if (obj == null || string.IsNullOrWhiteSpace(name)) return false;
 
-            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
-            var type = obj.GetType();
             try
             {
-                var prop = type.GetProperty(name, Flags);
-                if (prop != null && prop.CanWrite)
-                {
-                    prop.SetValue(obj, value);
-                    return true;
-                }
-
-                var field = type.GetField(name, Flags);
-                if (field != null)
-                {
-                    field.SetValue(obj, value);
-                    return true;
-                }
+                var accessor = ResolveMember(obj.GetType(), name, ignoreCase: true);
+                return accessor != null && accessor.TrySetValue(obj, value);
             }
             catch { }
 

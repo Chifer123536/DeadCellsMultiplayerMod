@@ -307,6 +307,17 @@ namespace DeadCellsMultiplayerMod
             if (slot.HasValue && slot.Value >= 0)
                 return slot.Value;
 
+            // Per-process slot override (see MUser.ResolveSaveSlotNumber): options.curSlot is
+            // shared between game processes on one machine via the config file; the env var keeps
+            // two local co-op instances on different save slots deterministically.
+            var envSlot = Environment.GetEnvironmentVariable("DCCM_SAVE_SLOT");
+            if (!string.IsNullOrWhiteSpace(envSlot) &&
+                int.TryParse(envSlot, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsedEnvSlot) &&
+                parsedEnvSlot >= 0)
+            {
+                return parsedEnvSlot;
+            }
+
             try
             {
                 var current = dc.Main.Class.ME?.options?.curSlot;

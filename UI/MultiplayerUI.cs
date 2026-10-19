@@ -67,6 +67,12 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
         private int lastMaxLife = 0;
         private int _lastHostConnectedClientCount = -1;
 
+        // Throttle: KingLifeUpdate is hooked on updateLifeBar AND called from OnHeroUpdate, so
+        // without this it ran twice per frame during combat. ~33ms keeps HUD response invisible.
+        private long _lastKingLifeUpdateTicks;
+        private static readonly long KingLifeUpdateMinIntervalTicks =
+            System.Diagnostics.Stopwatch.Frequency / 30;
+
         private static MultiplayerUI? _instance;
 
         // Party plate layout (panel-local units), matching the mockup: bronze name plate on the
@@ -154,6 +160,15 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
 
         public void KingLifeUpdate(Hero self)
         {
+            // Driven from both Hook_Hero.updateLifeBar and OnHeroUpdate — in combat that is two
+            // full passes per frame (snapshot lock, label Trim/allocations, percent formatting per
+            // slot). One pass per rendered frame is enough; HP changes are picked up by the next
+            // frame at worst.
+            var nowTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (nowTicks - _lastKingLifeUpdateTicks < KingLifeUpdateMinIntervalTicks)
+                return;
+            _lastKingLifeUpdateTicks = nowTicks;
+
             _net = ModEntry._net;
             var net = _net;
             if (net == null)

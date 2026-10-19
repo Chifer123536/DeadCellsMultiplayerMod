@@ -273,6 +273,32 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             if (string.IsNullOrWhiteSpace(group))
                 return string.Empty;
 
+            return GetCachedAnimPayload(group, reverse, speed);
+        }
+
+        // Anim payloads are rebuilt every frame for every visible host mob, and the raw material is
+        // almost always the identical (group, reverse, speed) triple as last frame — EscapeDataString
+        // + string.Create were allocating 2-3 strings per visible mob per frame purely to produce a
+        // byte-identical payload that the observer then discards via string.Equals. Memoize the
+        // encoding instead: one dictionary hit per frame per mob, allocation only when something
+        // actually changed. Speeds vary continuously during wind-ups, so cap the cache and clear
+        // wholesale like parsedAnimPayloadCache does.
+        private static readonly Dictionary<string, string> s_animPayloadEncodeCache = new(StringComparer.Ordinal);
+        private const int AnimPayloadEncodeCacheLimit = 1024;
+
+        private static string GetCachedAnimPayload(string group, bool reverse, double speed)
+        {
+            // Quantize speed so micro-differences during a wind-up don't blow the cache; the client
+            // clamps to [0.01, MaxClientAnimPayloadSpeed] anyway and anim speed is cosmetic.
+            var quantizedSpeed = System.Math.Round(speed, 3);
+            var key = string.Create(CultureInfo.InvariantCulture, $"{group}~{(reverse ? 1 : 0)}~{quantizedSpeed:R}");
+
+            lock (Sync)
+            {
+                if (s_animPayloadEncodeCache.TryGetValue(key, out var cached))
+                    return cached;
+            }
+
             string encodedGroup;
             try
             {
@@ -283,9 +309,18 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 encodedGroup = group;
             }
 
-            return string.Create(
-                CultureInfo.InvariantCulture,
-                $"{encodedGroup}~{(reverse ? 1 : 0)}~{speed:R}");
+            var payload = ReferenceEquals(encodedGroup, group) || string.Equals(encodedGroup, group, StringComparison.Ordinal)
+                ? key
+                : string.Create(CultureInfo.InvariantCulture, $"{encodedGroup}~{(reverse ? 1 : 0)}~{quantizedSpeed:R}");
+
+            lock (Sync)
+            {
+                if (s_animPayloadEncodeCache.Count >= AnimPayloadEncodeCacheLimit)
+                    s_animPayloadEncodeCache.Clear();
+                s_animPayloadEncodeCache[key] = payload;
+            }
+
+            return payload;
         }
 
         private static bool TryParseAnimPayload(string? payload, out ParsedAnimPayload parsed)

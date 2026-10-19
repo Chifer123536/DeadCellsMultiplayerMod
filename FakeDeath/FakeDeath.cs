@@ -1171,11 +1171,14 @@ namespace DeadCellsMultiplayerMod
 
         private string GetCurrentLevelId()
         {
+            // Reuses the map-reference-keyed cache from the position send path: this runs from
+            // several per-frame consumers (revive anchors, downed state, hints) and each call used
+            // to allocate map.id.ToString() + Trim().
             try
             {
-                var currentLevelId = me?._level?.map?.id?.ToString();
+                var currentLevelId = GetPositionLevelIdCached();
                 if (!string.IsNullOrWhiteSpace(currentLevelId))
-                    return currentLevelId.Trim();
+                    return currentLevelId;
             }
             catch
             {

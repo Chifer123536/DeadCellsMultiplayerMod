@@ -330,6 +330,7 @@ namespace DeadCellsMultiplayerMod
 
         public static void NotifyRemoteConnected(NetRole role)
         {
+            Tools.GameTrace.Event("net", "remote connected (local role={Role})", role);
             ResetHostDisconnectCountdown();
             SendUsernameToRemote();
             SendLocalReadyState();
@@ -406,6 +407,7 @@ namespace DeadCellsMultiplayerMod
 
         public static void NotifyRemoteDisconnected(NetRole role)
         {
+            Tools.GameTrace.Event("net", "remote disconnected (local role={Role})", role);
             // Clear launch ACK/queued/ready state before any reconnect can reuse this NetNode.
             // This matters when one peer restarts its process while the other peer stays alive.
             try { RunLaunchCoordinator.OnRemoteDisconnected(role); } catch { }

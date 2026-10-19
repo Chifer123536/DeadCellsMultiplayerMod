@@ -39,6 +39,11 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
         /// <summary>After a level registry rebuild, resend MOBREG + catch-up a few times for late-loading clients.</summary>
         private const int HostAuthoritativeBootstrapResyncCount = 6;
         private const double HostAuthoritativeBootstrapResyncIntervalFrames = 5.0;
+        /// <summary>
+        /// MOBREG resends re-armed by a runtime spawn (summon/malaise/elite). One send can be lost
+        /// or rejected by a still-loading client, which would leave the mob host-only forever.
+        /// </summary>
+        private const int RuntimeSpawnRegistryResendCount = 3;
         /// <summary>Max mobs included in one catch-up pass (byte budget still applies).</summary>
         private const int HostPriorityResyncCatchUpBudgetPerFlush = 48;
         /// <summary>Keep a short host-side tombstone for dead mobs so clients that miss the one death packet still clean up 0-HP ghosts.</summary>
@@ -122,6 +127,11 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
         private const string OldSkillExecutePacketPrefix = "@oldexec:";
         private const string NewSkillExecutePacketPrefix = "@newexec:";
         private const int MobWirePacketByteBudget = 4096;
+        /// <summary>
+        /// MOBDRAW is sent unreliably; a lost interest-granting draw used to strand the host
+        /// relevance gate forever. Re-assert interest this often (~2s at 30fps) while visible.
+        /// </summary>
+        private const double ClientDrawHeartbeatIntervalFrames = 30.0 * 2.0;
         private static double GetClientInterpolationAlpha()
         {
             var configured = MultiplayerSettingsStorage.MobsInterpolationQuality;

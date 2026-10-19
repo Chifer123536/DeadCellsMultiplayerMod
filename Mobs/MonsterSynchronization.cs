@@ -1462,8 +1462,167 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             }
         }
 
-        private static void ApplyHpMultiplierToTrackedMobs()
+        /// <summary>
+        /// Diagnostic snapshot of local mobsync state for the game-control API and for comparing
+        /// the two players' views after a session (sync-health diff). Event-driven only; iterates
+        /// tracked mobs under Sync so it must not be called per frame.
+        /// </summary>
+        internal static object? BuildSyncHealthSnapshot()
         {
+            var net = LobbySession.NetRef;
+            if (net == null || !net.IsAlive)
+                return null;
+
+            var entries = new List<object>();
+            lock (Sync)
+            {
+                for (var i = 0; i < trackedMobs.Count && entries.Count < 512; i++)
+                {
+                    var mob = trackedMobs[i];
+                    if (mob == null)
+                        continue;
+
+                    var syncId = MobToId.TryGetValue(mob, out var id) ? id : -1;
+                    int life = 0, maxLife = 0;
+                    double x = 0, y = 0;
+                    var destroyed = false;
+                    try
+                    {
+                        life = mob.life;
+                        maxLife = mob.maxLife;
+                        x = GetWorldX(mob);
+                        y = GetWorldY(mob);
+                        destroyed = mob.destroyed;
+                    }
+                    catch
+                    {
+                    }
+
+                    string typeName;
+                    try { typeName = mob.GetType().Name; } catch { typeName = "?"; }
+
+                    entries.Add(new
+                    {
+                        syncId,
+                        type = typeName,
+                        x = System.Math.Round(x, 1),
+                        y = System.Math.Round(y, 1),
+                        life,
+                        maxLife,
+                        destroyed,
+                        boss = Bosses.BossSyncHelpers.IsBossMob(mob),
+                        aiLocked = clientAiLockedMobs.Contains(mob),
+                        attacking = clientActiveNetworkAttackMobs.Contains(mob),
+                    });
+                }
+
+                return new
+                {
+                    ok = true,
+                    role = net.IsHost ? "host" : "client",
+                    generation = s_levelIdentityToken,
+                    trackedCount = trackedMobs.Count,
+                    nextSyncId = nextRuntimeSyncId,
+                    hostDirtyQueue = hostDirtyMobQueue.Count,
+                    clientDirtyQueue = clientDirtyMobQueue.Count,
+                    hostTombstones = s_hostDeathTombstonesBySyncId.Count,
+                    clientTombstones = s_clientMobTombstonesBySyncId.Count,
+                    pendingBossAttacks = clientPendingBossAttacks.Count,
+                    poisonedSkillReplays = s_poisonedOldSkillReplays.Count,
+                    diagResolveFails = s_diagResolveFails,
+                    diagHitResolveFails = s_diagHitResolveFails,
+                    diagMissingSyncPackets = s_diagMissingSyncPackets,
+                    quiesced = s_syncQuiescedUntilTicks != 0,
+                    mobs = entries,
+                };
+            }
+        }
+
+        /// <summary>
+        /// Kills a mob through the normal host-authoritative pipeline: native kill() on the host
+        /// (Hook_Mob_onDie then emits the reliable MOBDIE + tombstone), or a lethal hit report on
+        /// the client (host applies damage, confirms the death, client applies it back). Returns
+        /// false when the mob cannot be killed in the current role/state.
+        /// </summary>
+        /// <summary>Diagnostics accessor for the game-control API: the mob's bound NetId, or 0/-1.</summary>
+        internal static int ApiTryGetSyncId(Mob mob)
+        {
+            if (mob == null)
+                return 0;
+            try
+            {
+                lock (Sync)
+                    return MobToId.TryGetValue(mob, out var id) ? id : 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        internal static bool TryApiKillMob(Mob mob)
+        {
+            if (mob == null)
+                return false;
+
+            var net = LobbySession.NetRef;
+            if (net == null || !net.IsAlive)
+                return false;
+
+            try
+            {
+                if (mob.destroyed || mob.life <= 0)
+                    return false;
+
+                if (IsHost(net))
+                {
+                    mob.kill();
+                    Tools.GameTrace.Event("control", "api kill (host) type={Type}", mob.GetType().Name);
+                    return true;
+                }
+
+                // Client: report a lethal hit through the authoritative MOBEVENT hit path — the
+                // same channel a real client kill uses (hit|life|damageHint with damageHint sized
+                // to finish the mob).
+                if (!IsClient(net))
+                    return false;
+
+                if (!TryGetMobSyncId(mob, out var syncId) || syncId <= 0)
+                    return false;
+                if (!TryGetCurrentLevelIdentityToken(out var identityToken))
+                    return false;
+
+                int life;
+                int maxLife;
+                try
+                {
+                    life = mob.life;
+                    maxLife = mob.maxLife;
+                }
+                catch
+                {
+                    return false;
+                }
+
+                var damageHint = System.Math.Max(1.0, maxLife > 0 ? maxLife : life) * 4.0;
+                var x = GetWorldX(mob);
+                var y = GetWorldY(mob);
+                var mobType = BuildMobStateTypeSignature(mob);
+                var hitEvent = string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"hit|0|{damageHint:R}");
+                var update = new NetNode.MobEventUpdate(syncId, x, y, 0, SingleEvent(hitEvent), mobType, identityToken);
+                net.SendMobEvents(SingleUpdate(update));
+                Tools.GameTrace.Event("control", "api kill (client hit-report) syncId={SyncId} type={Type}", syncId, mob.GetType().Name);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void ApplyHpMultiplierToTrackedMobs()        {
             if (!MultiplayerSettingsStorage.EnableMobsSync)
                 return;
 
