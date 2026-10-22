@@ -285,13 +285,13 @@ namespace DeadCellsMultiplayerMod
             try
             {
                 EnsureMultiplayerSaveFolderExists();
-                return MakeHLString(GetMultiplayerSaveRelativeFilePath(slot));
             }
             catch (Exception ex)
             {
-                _log?.Warning("[NetMod] Failed to resolve multiplayer save path: {Message}", ex.Message);
-                return orig(slot);
+                _log?.Warning("[NetMod] Failed to create multiplayer save folder: {Message}", ex.Message);
             }
+
+            return MakeHLString(GetMultiplayerSaveRelativeFilePath(slot));
         }
 
         internal static bool ShouldUseMultiplayerSaveStore()
