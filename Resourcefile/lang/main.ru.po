@@ -13,546 +13,730 @@ msgstr ""
 "X-Poedit-Basepath: ../../../ModCore\n"
 "X-Poedit-SearchPath-0: .\n"
 
-#: ConnectionUI.cs:87
-msgid "DeadCellsMultiplayerMod"
-msgstr "DeadCellsMultiplayerMod"
-
-#: ConnectionUI.cs 278
-msgid "Lobby menu"
-msgstr "Меню лобби"
-
-#: ConnectionUI.cs
-msgid "Lobby code"
-msgstr "Код лобби"
-
-#: GameMenu.MultiplayerSaveSlots.cs
-msgid "Save: Slot {0}"
-msgstr "Сохранение: слот {0}"
-
-#: ConnectionUI.cs:301
-msgid "Players' list"
-msgstr "Список игроков"
-
-#: ConnectionUI.cs:342
-msgid "connecting..."
-msgstr "подключение..."
-
-#: ConnectionUI.cs:344
-msgid "- "
-msgstr "- "
-
-#: GameMenu.cs:472
-msgid "Play multiplayer"
-msgstr "Играть в мультиплеер"
-
-#: GameMenu.cs:472
-msgid "Host or join a multiplayer session"
-msgstr "Создай или присоединись к лобби"
-
-#: GameMenu.cs:485
-msgid "Host game"
-msgstr "Создать лобби"
-
-#: GameMenu.cs:485
-msgid "Join game"
-msgstr "Присоединиться к лобби"
-
-#: GameMenu.cs:485
-msgid "Back"
-msgstr "Назад"
-
-#: GameMenu.cs:485
-msgid "Return to main menu"
-msgstr "Вернуться в главное меню"
-
-#: GameMenu.cs:485
-msgid "Create a multiplayer session"
-msgstr "Создать лобби"
-
-#: GameMenu.cs:485
-msgid "Connect to an existing host"
-msgstr "Подключиться к лобби"
-
-#: GameMenu.cs:526
-msgid "Edit display name"
-msgstr "Изменить никнейм"
-
-#: GameMenu.cs:526
-msgid "Username: "
-msgstr "Никнейм: "
-
-#: GameMenu.cs:531
-msgid "Edit IP"
-msgstr "Изменить IP"
-
-#: GameMenu.cs:531
-msgid "IP: "
-msgstr "Адрес: "
-
-#: GameMenu.cs:531
-msgid "Edit IP address"
-msgstr "Изменить адрес"
-
-#: GameMenu.cs:541
-msgid "Edit port"
-msgstr "Изменить порт"
-
-#: GameMenu.cs:541
-msgid "Port: "
-msgstr "Порт: "
-
-#: GameMenu.cs:554
-msgid "Host"
-msgstr "Создать лобби"
-
-#: GameMenu.cs:554
-msgid "Start hosting"
-msgstr "Создать лобби"
-
-#: GameMenu.cs:554
-msgid "Join"
-msgstr "Присоединиться"
-
-#: GameMenu.cs:554
-msgid "Connect to host"
-msgstr "Присоединиться в лобби"
-
-#: GameMenu.cs:611
-msgid "Lan host"
-msgstr "Хост по LAN"
-
-#: GameMenu.cs:627
-msgid "Steam host"
-msgstr "Хост Steam"
-
-#: GameMenu.cs:625
-msgid "Use direct IP/port hosting"
-msgstr "Прямое подключение по IP и порту"
-
-#: GameMenu.cs:631
-msgid "Create Steam lobby and start immediately"
-msgstr "Создать лобби Steam и сразу начать"
-
-#: GameMenu.cs:667
-msgid "Lan join"
-msgstr "Подключение по LAN"
-
-#: GameMenu.cs:675
-msgid "Steam join"
-msgstr "Подключение через Steam"
-
-#: GameMenu.cs:671
-msgid "Connect by IP/port"
-msgstr "Подключиться по IP и порту"
-
-#: GameMenu.cs:677
-msgid "Connect by Steam lobby id/code from clipboard"
-msgstr "Подключение по ID/коду лобби Steam из буфера обмена"
-
-#: GameMenu.cs:821
-msgid "Steam host failed"
-msgstr "Ошибка хоста Steam"
-
-#: GameMenu.cs:822
-msgid "Could not start Steam host. Check console logs."
-msgstr "Не удалось запустить хост Steam. Смотрите логи консоли."
-
-#: GameMenu.cs:835
-msgid "Steam lobby creation failed. Check console logs."
-msgstr "Не удалось создать лобби Steam. Смотрите логи консоли."
-
-#: GameMenu.cs:960
-msgid "Steam join failed"
-msgstr "Ошибка подключения Steam"
-
-#: GameMenu.cs:961
-msgid "Steam join failed. Check console logs."
-msgstr "Ошибка подключения Steam. Смотрите логи консоли."
-
-#: GameMenu.cs:975
-msgid "Steam lobby endpoint is invalid. Check console logs."
-msgstr "Неверная конечная точка лобби Steam. Смотрите логи консоли."
-
-#: GameMenu.cs:1019
-msgid "Return to previous menu"
-msgstr "Вернуться в предыдущее меню"
-
-#: GameMenu.cs:1073
-msgid "Steam host id is missing. Check console logs."
-msgstr "Отсутствует Steam ID хоста. Смотрите логи консоли."
-
-#: GameMenu.cs:637
-msgid "Play"
-msgstr "Играть"
-
-#: GameMenu.cs:637
-msgid "Launch game"
-msgstr "Запустить игру"
-
-#: GameMenu.cs:637
-msgid "Back to host setup"
-msgstr "Вернуться к настройки лобби"
-
-#: GameMenu.cs:604
-msgid "Back to multiplayer menu"
-msgstr "Вернуться в меню мультиплеера"
-
-#: GameMenu.cs:666
-msgid "Disconnect"
-msgstr "Отключиться"
-
-#: GameMenu.cs:666
-msgid "Disconnect and return to main menu"
-msgstr "Отключиться и вернуться в главное меню"
-
-#: GameMenu.cs:680
-msgid "Can't find lobby"
-msgstr "Не удалось найти лобби"
-
-#: GameMenu.cs:680
-msgid "Return to join menu"
-msgstr "Вернуться в лобби подключения"
-
-#: GameMenu.cs:1069
-msgid "Username"
-msgstr "Никнейм"
-
-#: GameMenu.cs:1070
-msgid "IP address"
-msgstr "Адрес"
-
-#: GameMenu.cs:1077
-msgid "Port"
-msgstr "Порт"
-
-#: GameMenu.cs:1115
-msgid "waiting for the host"
-msgstr "ожидание хоста"
-
-#: GameMenu.cs:1117
-msgid "not connected"
-msgstr "не подключён"
-
-#: GameMenu.cs:1119
-msgid "waiting for client"
-msgstr "ожидание клиента"
-
-#: GameMenu.cs:1121
-msgid "client connected"
-msgstr "клиент подключён"
-
-#: GameMenu.cs:1123
-msgid "connected to host"
-msgstr "подключён к хосту"
-
-#: GameMenu.cs:1344
-msgid "OK"
-msgstr "Ок"
-
-#: GameMenu.cs:1344
-msgid "Cancel"
-msgstr "Назад"
-
-msgid "(Host)"
-msgstr "(Хост)"
-
-msgid "(you)"
-msgstr "(ты)"
-
-msgid "{0} connected to the server."
-msgstr "{0} подключился к серверу."
-
-msgid "{0} disconnected from the server."
-msgstr "{0} отключился от сервера."
-
-msgid "Host disconnected from server."
-msgstr "Хост отключился от сервера."
-
-msgid "Back to menu in {0}..."
-msgstr "Возврат в меню через {0}..."
-
-msgid "{0} reached the exit to {1}"
-msgstr "{0} добрался до выхода в {1}"
-
-msgid "next area"
-msgstr "следующую локацию"
-
-msgid "Guest"
-msgstr "Гость"
-
-msgid "Player {0}"
-msgstr "Игрок {0}"
-
-msgid "{0} fell!"
-msgstr "{0} пал!"
-
-msgid "Hold R to restore"
-msgstr "Удерживайте R, чтобы поднять"
-
-msgid "Hold to revive."
-msgstr "Удерживайте, чтобы воскресить."
-
-msgid "Game Over"
-msgstr "Игра окончена"
-
-msgid "Choose multiplayer save slot"
-msgstr "Выберите слот сохранения мультиплеера"
-
-msgid "Copy your save in that slot"
-msgstr "Скопировать сохранение в этот слот"
-
-msgid "Choose original save to copy"
-msgstr "Выберите сохранение для копирования"
-
-msgid "Saved games"
-msgstr "Сохранения"
-
-#: SettingsUI.cs
-msgid "Multiplayer settings"
-msgstr "Настройки мультиплеера"
-
-#: SettingsUI.cs
-msgid "Enable mobs sync"
-msgstr "Включить синхронизацию мобов"
-
-#: SettingsUI.cs
-msgid "Mobs interpolation quality"
-msgstr "Качество интерполяции мобов"
-
-#: SettingsUI.cs
-msgid "Mobs HP multiplier"
-msgstr "Множитель HP мобов"
-
-#: SettingsUI.cs
-msgid "Bosses HP multiplier"
-msgstr "Множитель HP боссов"
-
-#: SettingsUI.cs
-msgid "Sync vertical position"
-msgstr "Синхронизировать вертикальную позицию"
-
-#: SettingsUI.cs
-msgid "Mobs settings"
-msgstr "Настройки мобов"
-
-#: SettingsUI.cs
-msgid "Debug"
-msgstr "Отладка"
-
-#: SettingsUI.cs
-msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-msgstr "Применяет вертикальную позицию хоста к мобам под гравитацией. Выкл.: для ходячих только X; летающие по-прежнему синхронизируют Y. Вкл.: меньше рассинхрона, но наземные мобы могут дёргаться."
-
-#: SettingsUI.cs
-msgid "Module: language"
-msgstr "Модуль: язык"
-
-#: SettingsUI.cs
-msgid "Module: cinematics hooks"
-msgstr "Модуль: кат-сцены"
-
-#: SettingsUI.cs
-msgid "Module: multiplayer UI"
-msgstr "Модуль: UI мультиплеера"
-
-#: SettingsUI.cs
-msgid "Module: level init"
-msgstr "Модуль: инициализация уровня"
-
-#: SettingsUI.cs
-msgid "Module: mobs sync"
-msgstr "Модуль: синхронизация мобов"
-
-#: SettingsUI.cs
-msgid "Module: minimap reveal"
-msgstr "Модуль: раскрытие миникарты"
-
-#: SettingsUI.cs
-msgid "Module: level exit sync"
-msgstr "Модуль: синхронизация выходов"
-
-#: SettingsUI.cs
-msgid "Module: interaction sync"
-msgstr "Модуль: синхронизация взаимодействий"
-
-#: SettingsUI.cs
-msgid "Module: connection UI"
-msgstr "Модуль: UI подключения"
-
-#: SettingsUI.cs
-msgid "Module"
-msgstr "Модуль"
-
-#: SettingsUI.cs
-msgid "Player immortal"
-msgstr "Бессмертие игрока"
-
-#: SettingsUI.cs
-msgid "Use Explorer's Rune"
-msgstr "Руна следопыта"
-
-#: SettingsUI.cs
-msgid "Mobs sync trace logging"
-msgstr "Журнал трассировки синхронизации мобов"
-
-#: SettingsUI.cs
-msgid "Start perk"
-msgstr "Стартовый перк"
-
-#: SettingsUI.cs
-msgid "Previous perk"
-msgstr "Предыдущий перк"
-
-#: SettingsUI.cs
-msgid "Next perk"
-msgstr "Следующий перк"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Choose who can discover the Steam lobby"
-msgstr "Выберите, кто сможет найти лобби Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Steam friends-only host"
-msgstr "Лобби Steam только для друзей"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Create a Steam lobby visible to friends"
-msgstr "Создать лобби Steam, видимое друзьям"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Steam public host"
-msgstr "Публичное лобби Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Create a public Steam lobby with a shareable code"
-msgstr "Создать публичное лобби Steam с кодом для приглашения"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Back to hosting options"
-msgstr "Назад к вариантам хостинга"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Join by Steam lobby code"
-msgstr "Присоединиться по коду лобби Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Join Steam friend"
-msgstr "Присоединиться к другу в Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Open Steam friends and choose Join Game"
-msgstr "Открыть список друзей Steam и выбрать «Присоединиться к игре»"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Lobby code copied to clipboard"
-msgstr "Код лобби скопирован в буфер обмена"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Choose a friend playing this mod, then select Join Game"
-msgstr "Выберите друга, играющего с этим модом, затем нажмите «Присоединиться к игре»"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Could not open the Steam friends overlay. Check console logs."
-msgstr "Не удалось открыть список друзей Steam. Проверьте журнал консоли."
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Invite Steam friends"
-msgstr "Пригласить друзей Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Open the Steam friends invite list"
-msgstr "Открыть список приглашения друзей Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Steam invite failed"
-msgstr "Ошибка приглашения Steam"
-
-#: GameMenu.cs / GameMenu.Connection.cs
-msgid "Could not open the Steam invite list. Check console logs."
-msgstr "Не удалось открыть список приглашений Steam. Проверьте журнал консоли."
-
-#: GameMenu.cs
-msgid "Steam friends hosting this mod"
-msgstr "Друзья Steam, запустившие этот мод"
-
-#: GameMenu.cs
-msgid "No Steam friends are hosting right now."
-msgstr "Сейчас никто из друзей Steam не создал лобби."
-
-#: GameMenu.cs
-msgid "This list refreshes automatically."
-msgstr "Список обновляется автоматически."
-
-#: GameMenu.cs
-msgid "Steam friend"
-msgstr "Друг Steam"
-
-#: GameMenu.cs
-msgid "Join this friend's Steam lobby"
-msgstr "Присоединиться к лобби этого друга в Steam"
-
-#: GameMenu.cs
-msgid "Open Steam friends"
-msgstr "Открыть список друзей Steam"
-
-#: GameMenu.cs
-msgid "Join by Steam lobby code (fallback)"
-msgstr "Присоединиться по коду лобби Steam (резервный вариант)"
-
-msgid "Co-op: connected to host"
-msgstr "Кооператив: подключено к хосту"
-
+#: AdvancedCoop/CoopAdvancedHardening.cs:197
 msgid "Co-op: {0} friend(s) connected"
 msgstr "Кооператив: подключено друзей: {0}"
 
+#: AdvancedCoop/CoopAdvancedHardening.cs:198
+msgid "Co-op: connected to host"
+msgstr "Кооператив: подключено к хосту"
+
+#: AdvancedCoop/CoopAdvancedHardening.cs:310
 msgid "Co-op progression synced: +{0} unlock(s)"
 msgstr "Прогресс кооператива синхронизирован: +{0} разблок."
 
+#: CoopDlc/CoopDlcSession.cs:137
+msgid "you"
+msgstr "вас"
 
-#: Multiplayer online sync hardening
+#: FakeDeath/FakeDeath.cs:1339
+msgid "Game Over"
+msgstr "Игра окончена"
+
+#: FakeDeath/FakeDeath.cs:440
+msgid "{0} fell!"
+msgstr "{0} пал!"
+
+#: GameDataSync/GameDataSync.cs:308
+msgid "Run failed to synchronize with your friend. Please return to the menu and retry."
+msgstr "Забег не синхронизировался с другом. Вернитесь в меню и попробуйте снова."
+
+#: I18n/CoopText.cs:118
+msgid "As in game"
+msgstr "Как в игре"
+
+#: ModEntry/ModEntry.cs:1193
 msgid "Level failed to synchronize with the host. Return to the menu and rejoin."
 msgstr "Не удалось синхронизировать уровень с хостом. Вернитесь в меню и подключитесь снова."
 
-#: LobbySession.Dlc.cs
-msgid "DLC"
-msgstr "DLC"
+#: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:212
+msgid "Free seat"
+msgstr "Свободно"
 
-#: LobbySession.Dlc.cs
-msgid "Choose which DLC are used in this co-op session"
-msgstr "Выбрать DLC для этой кооп-сессии"
+#: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:216
+msgid "Host"
+msgstr "Хост"
 
-#: LobbySession.Dlc.cs
-msgid "DLC: waiting for host"
-msgstr "DLC: ждём хоста"
+#: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:218
+msgid "Ready"
+msgstr "Готов"
 
-#: LobbySession.Dlc.cs
-msgid "DLC:"
-msgstr "DLC:"
+#: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:219
+msgid "Not ready"
+msgstr "Не готов"
 
-#: LobbySession.Dlc.cs
-msgid "none"
-msgstr "нет"
+#: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:230
+msgid "Connecting to Steam lobby..."
+msgstr "Подключение к лобби Steam..."
 
-#: LobbySession.Dlc.cs
-msgid "DLC for this co-op session. Only DLC owned by every player can be enabled."
-msgstr "DLC для этой сессии. Включить можно только те, что есть у всех игроков."
+#: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:231
+msgid "connecting..."
+msgstr "подключение..."
 
-#: LobbySession.Dlc.cs
+#: UI/ConnectionUI/ConnectionUI.TextPrompt.cs:813
+msgid "OK"
+msgstr "ОК"
+
+#: UI/ConnectionUI/ConnectionUI.TextPrompt.cs:814
+msgid "Cancel"
+msgstr "Отмена"
+
+#: UI/ConnectionUI/ConnectionUI.cs:278
+msgid "Lobby code copied to clipboard"
+msgstr "Код лобби скопирован в буфер обмена"
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:119
+msgid "Steam invite failed"
+msgstr "Не удалось открыть приглашения"
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:120
+msgid "Could not open the Steam invite list. Check console logs."
+msgstr "Не удалось открыть список приглашений Steam. Проверьте, что оверлей Steam включён."
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:170
+msgid "Username"
+msgstr "Никнейм"
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:269
+msgid "Guest"
+msgstr "Гость"
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:270
+msgid "{0} disconnected from the server."
+msgstr "{0} отключился от сервера."
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:313
+msgid "Host disconnected from server."
+msgstr "Хост отключился от сервера."
+
+#: UI/ConnectionUI/LobbySession.Connection.cs:407
+msgid "Back to menu in {0}..."
+msgstr "Возврат в меню через {0}..."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:102
+msgid "Steam friend"
+msgstr "Друг Steam"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:112
+msgid "Join {0}'s lobby"
+msgstr "Войти в лобби игрока {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:120
+msgid "Open Steam friends"
+msgstr "Открыть список друзей Steam"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:122
+msgid "Pick a friend in Steam and choose Join Game."
+msgstr "Выберите друга в Steam и нажмите «Присоединиться к игре»."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:138
+msgid "Create public lobby"
+msgstr "Создать публичное лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:140
+msgid "Anyone with the lobby code can join. The code is copied to the clipboard."
+msgstr "Войти сможет любой, у кого есть код. Код копируется в буфер обмена."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:142
+msgid "Join by lobby code"
+msgstr "Войти по коду лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:144
+msgid "Copy the lobby code first, then choose this."
+msgstr "Сначала скопируйте код лобби, затем выберите этот пункт."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:147
+msgid "Local network: host"
+msgstr "Локальная сеть: создать"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:149
+msgid "Players on the same network connect by your IP."
+msgstr "Игроки из той же сети подключаются по вашему IP."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:151
+msgid "Local network: join"
+msgstr "Локальная сеть: подключиться"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:153
+msgid "Connect by the host's IP and port."
+msgstr "Подключение по IP и порту хоста."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:174
+msgid "Share your IP and port with players on the same network."
+msgstr "Сообщите IP и порт игрокам из вашей сети."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:175
+msgid "Enter the host's IP and port."
+msgstr "Укажите IP и порт хоста."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:177
+msgid "Name: {0}"
+msgstr "Имя: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:177
+msgid "Your name in the lobby."
+msgstr "Ваше имя в лобби."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:178
+msgid "IP: {0}"
+msgstr "IP: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:180
+msgid "IP address"
+msgstr "Адрес"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:186
+msgid "Change the IP address."
+msgstr "Изменить IP-адрес."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:187
+msgid "Port: {0}"
+msgstr "Порт: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:189
+msgid "Port"
+msgstr "Порт"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:197
+msgid "Change the port."
+msgstr "Изменить порт."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:206
+msgid "Start hosting on this IP and port."
+msgstr "Открыть лобби на этом IP и порту."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:210
+msgid "Connect"
+msgstr "Подключиться"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:214
+msgid "Connect to the host."
+msgstr "Подключиться к хосту."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:239
+msgid "Waiting until every player is ready."
+msgstr "Ждём, пока все игроки будут готовы."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:241
+msgid "Lobby"
+msgstr "Лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:248
+msgid "New run"
+msgstr "Новый забег"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:250
+msgid "Start a new co-op run."
+msgstr "Начать новый совместный забег."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:261
+msgid "Continue the multiplayer save."
+msgstr "Продолжить мультиплеерное сохранение."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:267
+msgid "Custom mode"
+msgstr "Пользовательский режим"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:269
+msgid "Set up and start a custom mode run."
+msgstr "Настроить и начать забег в пользовательском режиме."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:276
+msgid "Invite a friend"
+msgstr "Пригласить друга"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:278
+msgid "Open the Steam invite list."
+msgstr "Открыть список приглашений Steam."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:283
+msgid "Copy lobby code"
+msgstr "Скопировать код лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:293
+msgid "Choose the multiplayer save slot."
+msgstr "Выбрать слот мультиплеерного сохранения."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:294
+msgid "Choose which DLC are used in this session."
+msgstr "Выбрать DLC для этой сессии."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:296
+msgid "Difficulty: {0}"
+msgstr "Сложность: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:304
+msgid "Close lobby"
+msgstr "Закрыть лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:304
+msgid "Disconnect everyone and go back."
+msgstr "Отключить всех и вернуться."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:320
+msgid "Waiting for a friend. Invite someone from Steam."
+msgstr "Ждём друга. Пригласите кого-нибудь из Steam."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:321
+msgid "Waiting for players on the local network."
+msgstr "Ждём игроков из локальной сети."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:325
+msgid "Everyone is ready. Start the run!"
+msgstr "Все готовы — можно начинать!"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:328
+msgid "Waiting for: {0}"
+msgstr "Ждём: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:359
+msgid "Waiting for the host to start the run."
+msgstr "Ждём, пока хост начнёт забег."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:359
+msgid "Mark yourself ready when you are set."
+msgstr "Отметьтесь готовым, когда будете на месте."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:365
+msgid "Toggle your ready state."
+msgstr "Переключить готовность."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:369
+msgid "Leave lobby"
+msgstr "Выйти из лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:369
+msgid "Disconnect and go back."
+msgstr "Отключиться и вернуться."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:398
+msgid "Session DLC"
+msgstr "DLC на сессию"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:400
+msgid "Only DLC that every player owns can be enabled."
+msgstr "Включить можно только DLC, которые есть у всех игроков."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:402
 msgid "A run is in progress: changes apply to the next run."
 msgstr "Идёт забег: изменения вступят в силу со следующего."
 
-#: LobbySession.Dlc.cs
-msgid "Toggle this DLC for the session"
-msgstr "Включить или выключить это DLC для сессии"
+#: UI/ConnectionUI/LobbySession.Menus.cs:412
+msgid "{0}: {1}"
+msgstr "{0}: {1}"
 
-#: LobbySession.Dlc.cs
-msgid "Missing for:"
-msgstr "Нет у:"
+#: UI/ConnectionUI/LobbySession.Menus.cs:412
+msgid "On"
+msgstr "вкл."
 
-#: LobbySession.Dlc.cs
-msgid "Back to lobby"
-msgstr "Назад в лобби"
+#: UI/ConnectionUI/LobbySession.Menus.cs:412
+msgid "Off"
+msgstr "выкл."
 
-#: LobbySession.Dlc.cs
-msgid "you"
-msgstr "тебя"
+#: UI/ConnectionUI/LobbySession.Menus.cs:418
+msgid "Toggle this DLC for the session."
+msgstr "Включить или выключить это DLC в сессии."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:424
+msgid "unavailable"
+msgstr "недоступно"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:426
+msgid "Not owned by: {0}"
+msgstr "Нет у: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:445
+msgid "Can't find lobby"
+msgstr "Лобби не найдено"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:446
+msgid "The lobby is closed or the code is wrong."
+msgstr "Лобби закрыто или код неверный."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:472
+msgid "Connecting to the lobby..."
+msgstr "Подключение к лобби..."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:481
+msgid "DLC: waiting for host"
+msgstr "DLC: ждём хоста"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:482
+msgid "DLC: {0}"
+msgstr "DLC: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:489
+msgid "none"
+msgstr "нет"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:508
+msgid "all"
+msgstr "все"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:509
+msgid "DLC: {0} of {1}"
+msgstr "DLC: {0} из {1}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:51
+msgid "Co-op"
+msgstr "Кооператив"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:514
+msgid "Relaxed"
+msgstr "Лёгкая"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:515
+msgid "Hardcore"
+msgstr "Хардкор"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:516
+msgid "Standard"
+msgstr "Стандарт"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:523
+msgid "For {0} players: mob health x{1}, boss health x{2}, mob damage x{3}."
+msgstr "Для {0} игроков: здоровье мобов ×{1}, боссов ×{2}, урон мобов ×{3}."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:53
+msgid "Play together with your Steam friends."
+msgstr "Играйте вместе с друзьями из Steam."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:540
+msgid "Mode: {0}"
+msgstr "Режим: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:546
+msgid "Difficulty: waiting for host"
+msgstr "Сложность: ждём хоста"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:551
+msgid "Local network: {0}:{1}"
+msgstr "Локальная сеть: {0}:{1}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:559
+msgid "Lobby code: {0}"
+msgstr "Код лобби: {0}"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:56
+msgid "Create lobby"
+msgstr "Создать лобби"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:560
+msgid "Click the code to copy it."
+msgstr "Нажмите на код, чтобы скопировать."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:58
+msgid "Friends-only Steam lobby. Invite a friend once it is created."
+msgstr "Лобби Steam только для друзей. Пригласите друга, когда оно создастся."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:61
+msgid "Join a friend"
+msgstr "Присоединиться к другу"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:63
+msgid "Lobbies of Steam friends who are playing right now."
+msgstr "Лобби друзей Steam, которые сейчас в игре."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:65
+msgid "Other ways to connect"
+msgstr "Другие способы"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:67
+msgid "Public lobby, lobby code or local network."
+msgstr "Публичное лобби, вход по коду, локальная сеть."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:69
+msgid "Back"
+msgstr "Назад"
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:92
+msgid "No friend has an open lobby right now. The list updates by itself."
+msgstr "Сейчас ни у кого из друзей нет открытого лобби. Список обновляется сам."
+
+#: UI/ConnectionUI/LobbySession.Menus.cs:94
+msgid "Friends with an open lobby:"
+msgstr "Друзья с открытым лобби:"
+
+#: UI/ConnectionUI/LobbySession.cs:701
+msgid "Could not create the lobby"
+msgstr "Не удалось создать лобби"
+
+#: UI/ConnectionUI/LobbySession.cs:702
+msgid "Make sure Steam is running and try again."
+msgstr "Проверьте, что Steam запущен, и попробуйте ещё раз."
+
+#: UI/ConnectionUI/LobbySession.cs:715
+msgid "Steam did not create the lobby. Try again in a moment."
+msgstr "Steam не создал лобби. Попробуйте ещё раз чуть позже."
+
+#: UI/ConnectionUI/LobbySession.cs:746
+msgid "Choose a friend playing this mod, then select Join Game"
+msgstr "Выберите друга, который играет с этим модом, и нажмите «Присоединиться к игре»"
+
+#: UI/ConnectionUI/LobbySession.cs:753
+msgid "Steam join failed"
+msgstr "Не удалось подключиться"
+
+#: UI/ConnectionUI/LobbySession.cs:754
+msgid "Could not open the Steam friends overlay. Check console logs."
+msgstr "Не удалось открыть друзей Steam. Проверьте, что оверлей Steam включён."
+
+#: UI/ConnectionUI/LobbySession.cs:832
+msgid "Could not join the lobby"
+msgstr "Не удалось войти в лобби"
+
+#: UI/ConnectionUI/LobbySession.cs:833
+msgid "The lobby may be closed. Ask your friend to create it again."
+msgstr "Возможно, лобби закрыто. Попросите друга создать его заново."
+
+#: UI/ConnectionUI/MultiplayerSaves.cs:399
+msgid "Choose original save to copy"
+msgstr "Выберите сохранение для копирования"
+
+#: UI/ConnectionUI/MultiplayerSaves.cs:576
+msgid "Saved games"
+msgstr "Сохранения"
+
+#: UI/ConnectionUI/MultiplayerSaves.cs:61
+msgid "Save: Slot {0}"
+msgstr "Сохранение: слот {0}"
+
+#: UI/ConnectionUI/MultiplayerSaves.cs:716
+msgid "Copy your save in that slot"
+msgstr "Скопировать сохранение в этот слот"
+
+#: UI/ConnectionUI/ReadySync.cs:206
+msgid "Ready: yes"
+msgstr "Готов: да"
+
+#: UI/ConnectionUI/ReadySync.cs:206
+msgid "Ready: no"
+msgstr "Готов: нет"
+
+#: UI/ConnectionUI/ReadySync.cs:218
+msgid "Continue ({0})"
+msgstr "Продолжить ({0})"
+
+#: UI/ConnectionUI/RunLaunchFlow.Compat.cs:470
+msgid "Co-op version mismatch"
+msgstr "Разные версии кооп-мода"
+
+#: UI/ConnectionUI/RunLaunchFlow.Compat.cs:471
+msgid "Install the same version of the co-op mod on both computers."
+msgstr "Установите одну и ту же версию мода на обоих компьютерах."
+
+#: UI/ConnectionUI/RunLaunchFlow.MultiplayerLaunch.cs:145
+msgid "Normal mode"
+msgstr "Обычный режим"
+
+#: UI/ConnectionUI/RunLaunchFlow.cs:490
+msgid "Host cancelled the co-op run launch."
+msgstr "Хост отменил запуск забега."
+
+#: UI/LevelExitSync.cs:1120
+msgid "{0} reached the exit to {1}"
+msgstr "{0} добрался до выхода в {1}"
+
+#: UI/LevelExitSync.cs:1126
+msgid "next area"
+msgstr "следующую локацию"
+
+#: UI/LevelExitSync.cs:1155
+msgid "Boss Rush"
+msgstr "Босс-раш"
+
+#: UI/LevelExitSync.cs:1179
+msgid "Player {0}"
+msgstr "Игрок {0}"
+
+#: UI/LevelExitSync.cs:319
+msgid "The exit stays sealed until the boss falls."
+msgstr "Выход закрыт, пока босс жив."
+
+#: UI/LevelExitSync.cs:663
+msgid "Still waiting for your friend at this exit."
+msgstr "Ждём друга у этого выхода."
+
+#: UI/LevelExitSync.cs:711
+msgid "Teammate reached the exit. Following in {0} seconds..."
+msgstr "Напарник дошёл до выхода. Переход через {0} с..."
+
+#: UI/LevelExitSync.cs:856
+msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
+msgstr "Босс-раш не синхронизировался с другом. Подойдите к двери ещё раз."
+
+#: UI/SettingsUI.cs:217
+msgid "Mod language"
+msgstr "Язык мода"
+
+#: UI/SettingsUI.cs:218
+msgid "Language of the co-op menus. \"As in game\" follows the game language."
+msgstr "Язык меню кооператива. «Как в игре» — тот же, что у игры."
+
+#: UI/SettingsUI.cs:266
+msgid "Co-op difficulty"
+msgstr "Сложность кооператива"
+
+#: UI/SettingsUI.cs:267
+msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
+msgstr "Здоровье мобов и боссов и урон мобов растут с числом игроков. Выбирает хост."
+
+#: UI/SettingsUI.cs:277
+msgid "Enable mobs sync"
+msgstr "Включить синхронизацию мобов"
+
+#: UI/SettingsUI.cs:291
+msgid "Mobs HP multiplier"
+msgstr "Множитель HP мобов"
+
+#: UI/SettingsUI.cs:311
+msgid "Bosses HP multiplier"
+msgstr "Множитель HP боссов"
+
+#: UI/SettingsUI.cs:331
+msgid "Mobs damage multiplier"
+msgstr "Множитель урона мобов"
+
+#: UI/SettingsUI.cs:345
+msgid "Sync vertical position"
+msgstr "Синхронизировать вертикальную позицию"
+
+#: UI/SettingsUI.cs:346
+msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+msgstr "Применяет вертикальную позицию хоста к мобам под гравитацией. Выкл.: для ходячих только X; летающие по-прежнему синхронизируют Y. Вкл.: меньше рассинхрона, но наземные мобы могут дёргаться."
+
+#: UI/SettingsUI.cs:358
+msgid "Module: language"
+msgstr "Модуль: язык"
+
+#: UI/SettingsUI.cs:359
+msgid "Module: cinematics hooks"
+msgstr "Модуль: кат-сцены"
+
+#: UI/SettingsUI.cs:360
+msgid "Module: multiplayer UI"
+msgstr "Модуль: UI мультиплеера"
+
+#: UI/SettingsUI.cs:361
+msgid "Module: level init"
+msgstr "Модуль: инициализация уровня"
+
+#: UI/SettingsUI.cs:362
+msgid "Module: mobs sync"
+msgstr "Модуль: синхронизация мобов"
+
+#: UI/SettingsUI.cs:363
+msgid "Module: minimap reveal"
+msgstr "Модуль: раскрытие миникарты"
+
+#: UI/SettingsUI.cs:364
+msgid "Module: level exit sync"
+msgstr "Модуль: синхронизация выходов"
+
+#: UI/SettingsUI.cs:365
+msgid "Module: interaction sync"
+msgstr "Модуль: синхронизация взаимодействий"
+
+#: UI/SettingsUI.cs:366
+msgid "Module: connection UI"
+msgstr "Модуль: UI подключения"
+
+#: UI/SettingsUI.cs:367
+msgid "Module"
+msgstr "Модуль"
+
+#: UI/SettingsUI.cs:391
+msgid "Player immortal"
+msgstr "Бессмертие игрока"
+
+#: UI/SettingsUI.cs:399
+msgid "Use Explorer's Rune"
+msgstr "Руна следопыта"
+
+#: UI/SettingsUI.cs:407
+msgid "Mobs sync trace logging"
+msgstr "Журнал трассировки синхронизации мобов"
+
+#: UI/SettingsUI.cs:415
+msgid "Boss sync trace logging"
+msgstr "Трассировка синхронизации боссов"
+
+#: UI/SettingsUI.cs:423
+msgid "Show perf logs"
+msgstr "Логи производительности"
+
+#: UI/SettingsUI.cs:424
+msgid "Controls threshold-based [Perf] hitch and slowdown logging."
+msgstr "Запись подвисаний и замедлений [Perf] в лог."
+
+#: UI/SettingsUI.cs:435
+msgid "Start perk"
+msgstr "Стартовый перк"
+
+#: UI/SettingsUI.cs:442
+msgid "Previous perk"
+msgstr "Предыдущий перк"
+
+#: UI/SettingsUI.cs:449
+msgid "Next perk"
+msgstr "Следующий перк"
+
+#: UI/SettingsUI.cs:86
+msgid "Multiplayer settings"
+msgstr "Настройки мультиплеера"
+
+#: dynamic
+msgid "General"
+msgstr "Общие"
+
+#: dynamic
+msgid "Mobs settings"
+msgstr "Настройки мобов"
+
+#: dynamic
+msgid "Debug"
+msgstr "Отладка"
+
+#: dynamic
+msgid "Hold to revive."
+msgstr "Удерживайте, чтобы воскресить."
+
+#: dynamic
+msgid "Not all players ready"
+msgstr "Не все игроки готовы."
+
+#: dynamic
+msgid "No continue save"
+msgstr "Нет сохранения для продолжения."
+
+#: dynamic
+msgid "No local coop id"
+msgstr "Сохранение не привязано к кооперативу."
+
+#: dynamic
+msgid "Client coop id not received"
+msgstr "Ждём данные сохранения от игрока."
+
+#: dynamic
+msgid "Client has no continue save"
+msgstr "У игрока нет сохранения для продолжения."
+
+#: dynamic
+msgid "Client has no local coop id"
+msgstr "Сохранение игрока не привязано к кооперативу."
+
+#: dynamic
+msgid "Coop world mismatch"
+msgstr "Сохранения хоста и игрока от разных забегов."
+
+#: dynamic
+msgid "Host coop id not received"
+msgstr "Ждём данные сохранения от хоста."
+
+#: dynamic
+msgid "Host has no continue save"
+msgstr "У хоста нет сохранения для продолжения."
+
+#: dynamic
+msgid "Host has no coop id"
+msgstr "Сохранение хоста не привязано к кооперативу."

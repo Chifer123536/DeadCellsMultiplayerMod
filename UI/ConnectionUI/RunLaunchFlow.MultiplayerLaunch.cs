@@ -142,7 +142,7 @@ namespace DeadCellsMultiplayerMod
 
         internal static string GetModeLabel(bool isCustom)
         {
-            return isCustom ? "Custom Mode" : "Normal Mode";
+            return isCustom ? Localize("Custom mode") : Localize("Normal mode");
         }
 
         internal static bool ResolveCurrentSaveIsCustom(TitleScreen? screen)
@@ -165,16 +165,12 @@ namespace DeadCellsMultiplayerMod
 
         internal static string GetContinueButtonLabel(TitleScreen? screen)
         {
-            return string.Create(
-                System.Globalization.CultureInfo.InvariantCulture,
-                $"Continue ({GetModeLabel(ResolveCurrentSaveIsCustom(screen))})");
+            return FormatLocalized("Continue ({0})", GetModeLabel(ResolveCurrentSaveIsCustom(screen)));
         }
 
         internal static string GetStartNormalModeButtonLabel()
         {
-            return string.Create(
-                System.Globalization.CultureInfo.InvariantCulture,
-                $"{GetModeLabel(isCustom: false)}");
+            return Localize("New run");
         }
 
         internal static void ContinueHostRun(TitleScreen screen)

@@ -456,6 +456,9 @@ public sealed partial class NetNode
         if (TryHandleDlcLine(line, senderId ?? (_role == NetRole.Client ? 1 : (int?)null), forceSenderId))
             return true;
 
+        if (TryHandleBalanceLine(line))
+            return true;
+
         if (line.StartsWith(RunLaunchWireCodec.CommitTag + "|", StringComparison.Ordinal))
         {
             var payload = line[(RunLaunchWireCodec.CommitTag.Length + 1)..];

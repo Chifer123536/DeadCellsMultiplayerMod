@@ -689,6 +689,7 @@ namespace DeadCellsMultiplayerMod
             Hook__EndCollectorPostSmash.__constructor__ += Hook__EndCollectorPostSmash__constructor__;
             Hook__EndCollectorPostSmashKS.__constructor__ += Hook__EndCollectorPostSmashKS__constructor__;
             Ghost.KingWeaponHooks.Install();
+            CoopBalanceSync.Install();
         }
 
         private static void Hook_GlowKey_applyGlowData(
@@ -1447,6 +1448,7 @@ namespace DeadCellsMultiplayerMod
             PlayPopupWindowGuard.Tick();
             CheckRemoteKingRenderSafety("frame");
             LobbySession.TickMenu(dt);
+            CoopBalanceSync.TickHost();
             DetectAndSendBossCine();
             ApplyReceivedBossHeroTeleport();
             ApplyReceivedBossCine();

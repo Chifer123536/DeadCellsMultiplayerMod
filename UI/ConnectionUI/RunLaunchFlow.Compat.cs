@@ -465,20 +465,11 @@ internal static partial class LobbySession
             if (screen == null)
                 return;
 
-            screen.clearMenu();
-            UiBegin();
-            UiInfo(Localize("Co-op version mismatch"), 0xFF9090);
-            UiInfo(detail, 0xE0E0E0);
-            UiInfo(
-                Localize("Install the exact same DeadCellsMultiplayerMod build on both computers."),
-                0xE0E0E0);
-            UiButton(GetText.Instance.GetString("OK"), () =>
-            {
-                screen.clearMenu();
-                ShowJoinTransportMenu(screen);
-            }, Localize("Return to join menu"));
-            screen.ShouldAutoHideConnectionUI(true);
-            UiCommit();
+            ShowConnectionErrorPopup(
+                screen,
+                Localize("Co-op version mismatch"),
+                detail + "\n" + Localize("Install the same version of the co-op mod on both computers."),
+                () => ShowJoinTransportMenu(screen));
         });
     }
 }

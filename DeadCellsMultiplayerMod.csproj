@@ -55,6 +55,7 @@
     <Compile Remove="API\**" />
     <None Remove="API\**" />
     <PackAssets Include="Resourcefile\**\*" RootInPak="DeadCellsMultiplayerModLang" />
+    <EmbeddedResource Include="Resourcefile\lang\main.*.po" LogicalName="CoopLang.%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>

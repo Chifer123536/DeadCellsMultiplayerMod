@@ -16,6 +16,7 @@ using Serilog;
 using DeadCellsMultiplayerMod.MultiplayerModUI.Connection.LightingInitializer;
 using DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI;
 using DeadCellsMultiplayerMod.Tools;
+using DeadCellsMultiplayerMod.I18n;
 
 namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
 {
@@ -79,88 +80,53 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
             try { this._lobbyBeheadedRoot.set_visible(false); } catch { }
         }
 
-        /// <summary>
-        /// Spawns the four lobby beheaded slots (UIChrome bg + sprite + nick). This IS the players list.
-        /// Position offsets are user-tuned; do not casually move the root.
-        /// </summary>
-        private void PlaceLobbyBeheadedUnderPlayerList(
+        (double Bottom, double Width) PlaceLobbyBeheaded(
             List<_ConnectionUI.LobbyPlayerSlot> slots,
-            double panelW,
+            dc.h2d.Object parent,
             double uiScale,
-            double textUi,
-            double screenPad)
+            double textUi)
         {
             ClearLobbyBeheadedSprites();
-            if (this._panelRoot == null)
-                return;
-
-            // Scene lighting globals must be present for DirLighted (title-screen hero path).
             EnsureLobbyBeheadedLighting();
 
-            // Beheaded positions are the anchor. Boxes/nicks are offset to frame them
-            // (do not move the sprites to chase the plates — move the plates).
             const double beheadedScale = 2.75;
-            const double gapBetweenBeheaded = 24.0;
+            const double gapBetweenBeheaded = 18.0;
             const double approxTileWidth = 48.0;
             const double approxTileHeight = 80.0;
-            const double nickGap = 6.0;
+            const double textGap = 6.0;
             const double boxPadX = 20.0;
             const double boxPadY = 28.0;
-            // Whole row on screen (negative = left).
-            const double rootXNudge = -5.0;
-            // Plate vs beheaded — tune so the art sits in the middle of the box.
-            // Negative X = box left; negative Y = box up.
             const double boxOffsetX = 5.0;
             const double boxOffsetY = -95.0;
             const double headOffsetY = -48.0;
 
             double scale = beheadedScale * uiScale;
-            double bodyW = approxTileWidth * scale;
-            double bodyH = approxTileHeight * scale;
-            double padX = boxPadX * uiScale;
-            double padY = boxPadY * uiScale;
-            double slotW = bodyW + padX * 2.0;
-            double slotH = bodyH + padY * 2.0;
+            double slotW = approxTileWidth * scale + boxPadX * uiScale * 2.0;
+            double slotH = approxTileHeight * scale + boxPadY * uiScale * 2.0;
             double step = slotW + gapBetweenBeheaded * uiScale;
             double plateDX = boxOffsetX * uiScale;
             double plateDY = boxOffsetY * uiScale;
 
             this._lobbyBeheadedRoot = new dc.h2d.Object(null);
-            this._panelRoot.addChild(this._lobbyBeheadedRoot);
+            parent.addChild(this._lobbyBeheadedRoot);
+            this._lobbyBeheadedRoot.x = -plateDX;
+            this._lobbyBeheadedRoot.y = -plateDY;
 
+            var seats = new Graphics(this._lobbyBeheadedRoot);
             int slotCount = System.Math.Max(slots.Count, _ConnectionUI.LobbySlotCount);
             double rowW = step * slotCount - gapBetweenBeheaded * uiScale;
-            this._lobbyBeheadedRoot.x = this._layoutW - System.Math.Max(panelW, rowW) - screenPad + rootXNudge;
-
-            double belowCode = this._lobbyPanelHeight > 0
-                ? this._lobbyPanelHeight + 12.0 * uiScale
-                : 72.0 * uiScale;
-            // Near the top, but not flush against the window edge.
-            this._lobbyBeheadedRoot.y = screenPad * 0.85 + belowCode;
+            double bottom = slotH;
 
             for (int i = 0; i < slotCount; i++)
             {
                 var slot = i < slots.Count ? slots[i] : _ConnectionUI.LobbyPlayerSlot.Empty;
                 bool occupied = slot.Occupied && !slot.IsConnecting;
                 double slotX = i * step;
-                // Beheaded stays on the geometric slot center — do not nudge these.
-                double sprX = slotX + slotW * 0.5;
-                double sprY = slotH * 0.5;
                 double plateX = slotX + plateDX;
-                double plateY = plateDY;
 
-                var plate = new Graphics(this._lobbyBeheadedRoot);
-                UiChrome.DrawRaisedPlate(
-                    plate,
-                    plateX,
-                    plateY,
-                    slotW,
-                    slotH,
-                    FieldCornerRadius * uiScale,
-                    occupied && slot.IsHost ? 0x3A5A7E : PanelInnerEdge,
-                    occupied ? PanelInner : 0x1A2233,
-                    occupied && slot.IsHost ? 0x4A6A8E : PanelInnerTop,
-                    enabled: true);
+                UiChrome.FillRoundRect(seats, plateX, plateDY, slotW, slotH, FieldCornerRadius * uiScale, SeatFill, SeatAlpha);
+                if (occupied && slot.IsHost)
+                    UiChrome.FillRoundRect(seats, plateX, plateDY, slotW, 2.0 * uiScale, 0.0, AccentColor, 0.65);
 
                 try
                 {
@@ -175,8 +141,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                     if (spr != null)
                     {
                         this._lobbyBeheadedRoot.addChild(spr);
-                        spr.x = sprX;
-                        spr.y = sprY;
+                        spr.x = slotX + slotW * 0.5;
+                        spr.y = slotH * 0.5;
                         ApplyLobbyBeheadedSkin(spr, skinId, ResolveLobbyBeheadedAnim(i), i, "create");
                         if (!occupied)
                             ApplyLobbyBeheadedSilhouette(spr);
@@ -202,42 +168,58 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                     Log.Warning("[ConnectionUI] Lobby beheaded[{Index}] failed: {Message}", i, ex.Message);
                 }
 
+                double textY = plateDY + slotH + textGap * uiScale;
                 string nick = ResolveLobbySlotNick(slot);
-                if (string.IsNullOrWhiteSpace(nick))
+                if (!string.IsNullOrWhiteSpace(nick))
                 {
-                    BringLobbyHeadsToFront();
-                    continue;
+                    var nickText = AddSeatText(nick, slot.IsYou ? 0xFFFFFF : TextColor, 0.44 * textUi, plateX, slotW, textY, uiScale);
+                    textY += MeasureHeight(nickText, 22.0 * uiScale) + 2.0 * uiScale;
                 }
 
-                var nickText = Assets.Class.makeText(
-                    nick.AsHaxeString(),
-                    Tools.MultiColor.ColorFromHex(slot.IsConnecting ? "#9098a8" : "#e8eef7"),
-                    false,
-                    this._lobbyBeheadedRoot);
-                double nickScale = 0.42 * textUi;
-                nickText.customScale = nickScale;
-                nickText.onResize();
-                nickText.textColor = slot.IsConnecting ? HelpColor : (slot.IsYou ? 0xE8EEF7 : TextColor);
-                try
+                var (status, color) = ResolveLobbySlotStatus(slot);
+                if (status.Length > 0)
                 {
-                    double textW = nickText.textWidth;
-                    nickText.x = plateX + (slotW - textW) * 0.5;
+                    var statusText = AddSeatText(status, color, 0.38 * textUi, plateX, slotW, textY, uiScale);
+                    textY += MeasureHeight(statusText, 18.0 * uiScale);
                 }
-                catch
-                {
-                    nickText.x = plateX + 4.0 * uiScale;
-                }
-                // Nick follows the box, not the geometric slot.
-                nickText.y = plateY + slotH + nickGap * uiScale;
-                this.connectionLabels.Add(nickText);
+
+                bottom = System.Math.Max(bottom, textY - plateDY);
                 BringLobbyHeadsToFront();
             }
 
             try { this._lobbyBeheadedRoot.set_visible(true); } catch { }
             this._lobbyBeheadedNeedsSkinRebind = this.sprites.Count > 0;
+            return (bottom, rowW);
         }
 
-        private static string ResolveLobbySlotNick(_ConnectionUI.LobbyPlayerSlot slot)
+        dc.ui.Text AddSeatText(string value, int color, double customScale, double plateX, double slotW, double y, double uiScale)
+        {
+            var text = Assets.Class.makeText(value.AsHaxeString(), color, false, this._lobbyBeheadedRoot);
+            text.customScale = customScale;
+            text.onResize();
+            text.textColor = color;
+            CoopText.Fit(text);
+            var w = MeasureWidth(text);
+            text.x = w > 0 ? plateX + (slotW - w) * 0.5 : plateX + 4.0 * uiScale;
+            text.y = y;
+            this.connectionLabels.Add(text);
+            return text;
+        }
+
+        static (string Text, int Color) ResolveLobbySlotStatus(_ConnectionUI.LobbyPlayerSlot slot)
+        {
+            if (!slot.Occupied)
+                return (CoopText.T("Free seat"), CoopMenu.MutedColor);
+            if (slot.IsConnecting)
+                return (string.Empty, HelpColor);
+            if (slot.IsHost)
+                return (CoopText.T("Host"), AccentColor);
+            return slot.Ready
+                ? (CoopText.T("Ready"), CoopMenu.GoodColor)
+                : (CoopText.T("Not ready"), HelpColor);
+        }
+
+        static string ResolveLobbySlotNick(_ConnectionUI.LobbyPlayerSlot slot)
         {
             if (!slot.Occupied)
                 return string.Empty;
@@ -245,8 +227,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
             if (slot.IsConnecting)
             {
                 if (string.Equals(slot.Nick, _ConnectionUI.SteamLobbyConnectingMarker, StringComparison.Ordinal))
-                    return GetText.Instance.GetString("Connecting to Steam lobby...");
-                return GetText.Instance.GetString("connecting...");
+                    return CoopText.T("Connecting to Steam lobby...");
+                return CoopText.T("connecting...");
             }
 
             return slot.Nick;

@@ -7,24 +7,12 @@ using ModCore.Modules;
 using DeadCellsMultiplayerMod.UI;
 using DeadCellsMultiplayerMod.Tools;
 using DeadCellsMultiplayerMod.MultiplayerModUI.Connection;
+using DeadCellsMultiplayerMod.I18n;
 
 namespace DeadCellsMultiplayerMod
 {
     internal static partial class LobbySession
     {
-        /// <summary>
-        /// Accent colour for the main-menu "Play multiplayer" entry, and for that entry only.
-        /// </summary>
-        /// <remarks>
-        /// 0x59D5FF is already used by this mod's in-game UI (LevelExitSync's circle marker), so it
-        /// sits in the Dead Cells palette and stays legible against the dark title background in both
-        /// the dimmed unselected state and the brightened selected state. It is applied through
-        /// <see cref="ApplyMultiplayerMenuAccent"/> and the opt-in colour argument of AddMenuButton
-        /// rather than by changing that helper's default, because the helper also builds Host game,
-        /// Join game, Ready, Disconnect, OK and Back.
-        /// </remarks>
-        internal const int MultiplayerMenuAccentColor = 0x59D5FF;
-
         internal static void InitializeMenuUiHooks()
         {
             if (_menuHooksAttached) return;
@@ -46,6 +34,10 @@ namespace DeadCellsMultiplayerMod
 
         internal static void MainMenuHook(Hook_TitleScreen.orig_mainMenu orig, TitleScreen self)
         {
+            if (CoopMenu.TryHandleBack(self))
+                return;
+
+            CoopMenu.Close();
             ModEntry.PumpSteamCallbacksForOverlay();
             if (!_addMenuHookRegistered)
             {
@@ -105,6 +97,9 @@ namespace DeadCellsMultiplayerMod
             bool? isEnable,
             Ref<int> color)
         {
+            if (_suppressAutoButton)
+                return orig(self, str, cb, help, isEnable, color);
+
             ModEntry.PumpSteamCallbacksForOverlay();
             MainThreadPump.ProcessMainThreadQueue();
             var wrappedCb = WrapQuitCallbackIfNeeded(str, cb);
@@ -122,12 +117,13 @@ namespace DeadCellsMultiplayerMod
                 var count = TitleScreenReflection.GetArrayLength(items);
                 if (count == 1)
                 {
-                    int accent = MultiplayerMenuAccentColor;
-                    var label = GetText.Instance.GetString("Play multiplayer").AsHaxeString();
-                    var helpStr = GetText.Instance.GetString("Host or join a multiplayer session").AsHaxeString();
-                    var colorHl = Ref<int>.From(ref accent);
+                    int itemColor = 0xFFFFFF;
+                    var label = CoopText.T("Co-op").AsHaxeString();
+                    var helpStr = CoopText.T("Play together with your Steam friends.").AsHaxeString();
+                    var colorHl = Ref<int>.From(ref itemColor);
                     var cbHl = new HlAction(() => ShowMultiplayerMenu(self));
-                    orig(self, label, cbHl, helpStr, null, colorHl);
+                    var item = orig(self, label, cbHl, helpStr, null, colorHl);
+                    CoopText.Fit(item.t);
                     _mainMenuButtonAdded = true;
                 }
             }
@@ -184,27 +180,21 @@ namespace DeadCellsMultiplayerMod
             try
             {
                 var arr = TitleScreenReflection.GetMemberValue(screen, "menuItems", true);
-                var playMultiplayer = GetText.Instance.GetString("Play multiplayer");
-                var playHelp = GetText.Instance.GetString("Host or join a multiplayer session");
-                var playLabel = GetText.Instance.GetString("Play");
-                var existingIdx = TitleScreenReflection.FindMenuIndexByLabel(arr, playMultiplayer);
+                var coopLabel = CoopText.T("Co-op");
+                var coopHelp = CoopText.T("Play together with your Steam friends.");
+                var playLabel = CoopText.Game("Jouer");
+                var existingIdx = TitleScreenReflection.FindMenuIndexByLabel(arr, coopLabel);
                 if (existingIdx < 0)
                 {
                     TryAddMenuButton(
                         screen,
-                        playMultiplayer,
+                        coopLabel,
                         () => ShowMultiplayerMenu(screen),
-                        playHelp,
-                        MultiplayerMenuAccentColor);
+                        coopHelp);
                     arr = TitleScreenReflection.GetMemberValue(screen, "menuItems", true);
                 }
                 _mainMenuButtonAdded = true;
-                MoveButtonAfterPlay(arr, playMultiplayer, playLabel);
-
-                // Re-assert last, after any reordering, and regardless of which path inserted the
-                // entry. This is what makes the accent survive a menu rebuild, a return from
-                // gameplay and a language change, without needing every insertion site to remember.
-                ApplyMultiplayerMenuAccent(arr, playMultiplayer);
+                MoveButtonAfterPlay(screen, arr, coopLabel, playLabel);
             }
             catch (Exception ex)
             {
@@ -212,39 +202,7 @@ namespace DeadCellsMultiplayerMod
             }
         }
 
-        /// <summary>
-        /// Applies <see cref="MultiplayerMenuAccentColor"/> to the live "Play multiplayer" menu item.
-        /// </summary>
-        /// <remarks>
-        /// The entry can be created by either <c>AddMenuHook</c> or the fallback in
-        /// <see cref="EnsureMainMenuMultiplayerButton"/>, and the TitleScreen menu is rebuilt every
-        /// time the main menu is shown. Colouring the existing item makes the result independent of
-        /// which path won the race. Lookup is by the localized label, so exactly one entry is
-        /// touched and no unrelated menu item changes colour.
-        /// </remarks>
-        internal static void ApplyMultiplayerMenuAccent(object? menuItemsArray, string playMultiplayerLabel)
-        {
-            try
-            {
-                var index = TitleScreenReflection.FindMenuIndexByLabel(menuItemsArray, playMultiplayerLabel);
-                if (index < 0)
-                    return;
-
-                var item = TitleScreenReflection.GetMenuItemAt(menuItemsArray, index);
-                // menuItem.t is dc.ui.Text, which inherits dc.h2d.Text.textColor (settable Int32).
-                var text = TitleScreenReflection.GetMemberValue(item, "t", true);
-                if (text == null)
-                    return;
-
-                TitleScreenReflection.TrySetMember(text, "textColor", MultiplayerMenuAccentColor);
-            }
-            catch (Exception ex)
-            {
-                _log?.Warning("[NetMod] Failed to apply multiplayer menu accent: {Message}", ex.Message);
-            }
-        }
-
-        internal static void MoveButtonAfterPlay(object? arrObj, string targetLabel, string anchorLabel)
+        internal static void MoveButtonAfterPlay(TitleScreen screen, object? arrObj, string targetLabel, string anchorLabel)
         {
             if (arrObj == null) return;
             try
@@ -279,10 +237,39 @@ namespace DeadCellsMultiplayerMod
 
                 removeDyn.Invoke(arrObj, new[] { targetObj });
                 insertDyn.Invoke(arrObj, new object[] { desired, targetObj });
+                MoveMenuTextAfterAnchor(screen, arrObj, getDyn, targetObj, desired);
             }
             catch (Exception ex)
             {
                 _log?.Warning("[NetMod] Failed to reposition menu button: {Message}", ex.Message);
+            }
+        }
+
+        static void MoveMenuTextAfterAnchor(TitleScreen screen, object arrObj, MethodInfo getDyn, object targetObj, int index)
+        {
+            try
+            {
+                var wrapper = screen.menuItemsWrapper;
+                var targetText = TitleScreenReflection.GetMemberValue(targetObj, "t", true) as dc.h2d.Object;
+                if (wrapper == null || targetText == null || index <= 0)
+                    return;
+
+                var anchorItem = getDyn.Invoke(arrObj, new object[] { index - 1 });
+                var anchorText = TitleScreenReflection.GetMemberValue(anchorItem, "t", true) as dc.h2d.Object;
+                if (anchorText == null)
+                    return;
+
+                var anchorPos = wrapper.getChildIndex(anchorText);
+                if (anchorPos < 0)
+                    return;
+
+                wrapper.addChildAt(targetText, anchorPos + 1);
+                wrapper.reflow();
+                screen.select(screen.curMenu, Ref<bool>.Null);
+            }
+            catch (Exception ex)
+            {
+                _log?.Debug("[NetMod] Failed to reorder menu text: {Message}", ex.Message);
             }
         }
     }

@@ -10,6 +10,7 @@ using Microsoft.Win32;
 using DeadCellsMultiplayerMod.MultiplayerModUI.Connection;
 using DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI;
 using ModCore.Modules;
+using DeadCellsMultiplayerMod.I18n;
 
 namespace DeadCellsMultiplayerMod
 {
@@ -107,77 +108,6 @@ namespace DeadCellsMultiplayerMod
             }
         }
 
-        internal static void ShowHostStatusMenu(TitleScreen screen)
-        {
-            if (_menuRebuildDepth > 0)
-                return;
-            _menuRebuildDepth++;
-            var prevSuppress = _suppressAutoButton;
-            _suppressAutoButton = true;
-            var prevIsMain = GetIsMainMenu(screen);
-            try
-            {
-                SetIsMainMenu(screen, false);
-                screen.clearMenu();
-
-                CoopDlcSession.OnHostingStarted();
-                UiBegin();
-                if (_menuTransport == ConnectionTransport.Steam)
-                    UiInfo(Localize("Steam lobby — invite friends, then launch when everyone is Ready."), 0x9098A8);
-                else
-                    UiInfo(Localize("LAN lobby — waiting for players. Launch unlocks when everyone is Ready."), 0x9098A8);
-                UiInfo(GetSessionDlcLabel(), 0x8A93A6);
-                var multiplayerSaveLabel = GetMultiplayerSaveButtonLabel();
-                var continueLabel = GetContinueButtonLabel(screen);
-                var startLabel = GetStartNormalModeButtonLabel();
-                var canLaunch = AllPlayersReady();
-                var continueCompatible = IsHostContinueCompatible(out var continueBlockReason);
-                var canContinue = canLaunch && continueCompatible;
-                var disabledContinueReason = canLaunch ? continueBlockReason : "Not all players ready";
-                UiButton(continueLabel, () => ContinueHostRun(screen), canContinue ? Localize("Continue the selected multiplayer save") : Localize(disabledContinueReason), canContinue);
-                UiButton(startLabel, () => StartHostRunNormalMode(screen), GetText.Instance.GetString("Launch game"), canLaunch, 0x59D5FF);
-                UiButton("Custom Mode", () => OpenHostCustomMode(screen), Localize("Configure and launch multiplayer custom mode"), canLaunch);
-                UiButton(GetReadyButtonLabel(), () => ToggleLocalReadyFromMenu(screen), Localize("Toggle your ready state"));
-                UiButton(multiplayerSaveLabel, () => OpenMultiplayerSlotMenu(screen), Localize("Choose multiplayer save slot"));
-                UiButton(Localize("DLC"), () => ShowHostDlcMenu(screen), Localize("Choose which DLC are used in this co-op session"));
-                if (_menuTransport == ConnectionTransport.Steam && _steamLobbyId != 0UL)
-                {
-                    UiButton(
-                        Localize("Invite Steam friends"),
-                        () => OpenSteamHostInviteOverlay(screen),
-                        Localize("Open the Steam friends invite list"));
-                }
-                UiButton(GetText.Instance.GetString("Back"), () =>
-                {
-                    var transport = _menuTransport;
-                    StopNetworkFromMenu();
-                    SetRole(NetRole.None);
-                    _menuSelection = NetRole.None;
-                    // Return to the setup screen that led here — never hide ConnectionUI after Show*.
-                    if (transport == ConnectionTransport.Lan)
-                        ShowConnectionMenu(screen, NetRole.Host);
-                    else
-                        ShowHostTransportMenu(screen);
-                    screen.ShouldAutoHideConnectionUI(true);
-                }, GetText.Instance.GetString("Back to host setup"));
-
-                RemoveMenuItems(screen, "About Core Modding", GetText.Instance.GetString("Play multiplayer"));
-                _inHostStatusMenu = true;
-                _inClientWaitingMenu = false;
-                UiCommit(showLobby: true);
-            }
-            catch (Exception ex)
-            {
-                _log?.Warning("[NetMod] Failed to open host status menu: {Message}", ex.Message);
-            }
-            finally
-            {
-                SetIsMainMenu(screen, prevIsMain);
-                _suppressAutoButton = prevSuppress;
-                _menuRebuildDepth--;
-            }
-        }
-
         internal static void OpenSteamHostInviteOverlay(TitleScreen screen)
         {
             if (SteamConnect.TryOpenInviteOverlay(_steamLobbyId, out var error))
@@ -189,94 +119,6 @@ namespace DeadCellsMultiplayerMod
                 Localize("Steam invite failed"),
                 Localize("Could not open the Steam invite list. Check console logs."),
                 () => ShowHostStatusMenu(screen));
-        }
-
-        internal static void ShowClientWaitingMenu(TitleScreen screen)
-        {
-            if (_menuRebuildDepth > 0)
-                return;
-            _menuRebuildDepth++;
-            var prevSuppress = _suppressAutoButton;
-            _suppressAutoButton = true;
-            var prevIsMain = GetIsMainMenu(screen);
-            try
-            {
-                SetIsMainMenu(screen, false);
-                screen.clearMenu();
-
-                UiBegin();
-                UiInfo(Localize("Connected — ready up and wait for the host to launch."), 0x9098A8);
-                UiInfo($"Selected mode: {GetPendingLaunchSummaryLabel(screen)}", 0xE0E0E0);
-                UiInfo(GetSessionDlcLabel(), 0x8A93A6);
-                if (_menuTransport == ConnectionTransport.Steam)
-                    UiInfo(Localize("Transport: Steam"), 0x8A93A6);
-                else
-                    UiInfo(Localize("Transport: LAN"), 0x8A93A6);
-                UiButton(GetReadyButtonLabel(), () => ToggleLocalReadyFromMenu(screen), Localize("Toggle your ready state"));
-                var multiplayerSaveLabel = GetMultiplayerSaveButtonLabel();
-                UiButton(multiplayerSaveLabel, () => OpenMultiplayerSlotMenu(screen), Localize("Choose multiplayer save slot"));
-                UiButton(
-                    GetText.Instance.GetString("Disconnect"),
-                    () =>
-                    {
-                        var transport = _menuTransport;
-                        DisconnectFromMenu(screen, restoreTitle: false);
-                        if (transport == ConnectionTransport.Lan)
-                            ShowConnectionMenu(screen, NetRole.Client);
-                        else
-                            ShowJoinTransportMenu(screen);
-                        screen.ShouldAutoHideConnectionUI(true);
-                    },
-                    GetText.Instance.GetString("Disconnect and return to join options"));
-
-                RemoveMenuItems(screen, "About Core Modding", GetText.Instance.GetString("Play multiplayer"));
-                _inClientWaitingMenu = true;
-                _inHostStatusMenu = false;
-                UiCommit(showLobby: true);
-            }
-            catch (Exception ex)
-            {
-                _log?.Warning("[NetMod] Failed to open client waiting menu: {Message}", ex.Message);
-            }
-            finally
-            {
-                SetIsMainMenu(screen, prevIsMain);
-                _suppressAutoButton = prevSuppress;
-                _menuRebuildDepth--;
-            }
-        }
-
-        internal static void ShowLobbyNotFoundPopup(TitleScreen screen)
-        {
-            var prevSuppress = _suppressAutoButton;
-            _suppressAutoButton = true;
-            var prevIsMain = GetIsMainMenu(screen);
-            try
-            {
-                SetIsMainMenu(screen, false);
-                screen.clearMenu();
-
-                UiBegin();
-                UiInfo(GetText.Instance.GetString("Can't find lobby"), 0xFF9090);
-                UiButton(
-                    GetText.Instance.GetString("OK"),
-                    () => ShowConnectionMenu(screen, NetRole.Client),
-                    GetText.Instance.GetString("Return to join menu"));
-
-                RemoveMenuItems(screen, "About Core Modding", GetText.Instance.GetString("Play multiplayer"));
-                _inClientWaitingMenu = false;
-                _inHostStatusMenu = false;
-                UiCommit();
-            }
-            catch (Exception ex)
-            {
-                _log?.Warning("[NetMod] Failed to open lobby not found popup: {Message}", ex.Message);
-            }
-            finally
-            {
-                SetIsMainMenu(screen, prevIsMain);
-                _suppressAutoButton = prevSuppress;
-            }
         }
 
         internal static void DisconnectFromMenu(TitleScreen screen, bool restoreTitle = true)
@@ -291,6 +133,7 @@ namespace DeadCellsMultiplayerMod
             {
                 try
                 {
+                    CoopMenu.Close();
                     ConnectionUI.DismissAndHide();
                     SetIsMainMenu(screen, false);
                     try { screen.clearMenu(); } catch { }
@@ -307,6 +150,7 @@ namespace DeadCellsMultiplayerMod
         {
             ResetHostDisconnectCountdown();
             CoopDlcSession.Restore("network stopped");
+            CoopBalanceSync.Reset();
             try
             {
                 ModEntry.Instance?.StopNetworkFromMenu();
@@ -323,7 +167,7 @@ namespace DeadCellsMultiplayerMod
 
         internal static void EditUsername(TitleScreen screen)
         {
-            OpenTextInput(screen, GetText.Instance.GetString("Username"), _username, value =>
+            OpenTextInput(screen, CoopText.T("Username"), _username, value =>
             {
                 var cleaned = CleanUsername(value);
                 _username = cleaned;
@@ -342,6 +186,7 @@ namespace DeadCellsMultiplayerMod
             SendCoopStateToRemote();
             SendLocalCosmeticsToRemote();
             CoopDlcSession.OnConnected(role);
+            CoopBalanceSync.OnRemoteConnected();
 
             if (role == NetRole.Host)
             {
@@ -456,6 +301,7 @@ namespace DeadCellsMultiplayerMod
             SetRole(NetRole.None);
             NetRef = null;
             CoopDlcSession.Restore("host disconnected");
+            CoopBalanceSync.Reset();
             _menuSelection = NetRole.None;
             ResetSteamState();
             ClearNetworkCaches();
@@ -727,20 +573,12 @@ namespace DeadCellsMultiplayerMod
 
         internal static string Localize(string message)
         {
-            return GetText.Instance.GetString(message);
+            return CoopText.T(message);
         }
 
         internal static string FormatLocalized(string format, params object[] args)
         {
-            var localizedFormat = Localize(format);
-            try
-            {
-                return string.Format(CultureInfo.InvariantCulture, localizedFormat, args);
-            }
-            catch
-            {
-                return string.Format(CultureInfo.InvariantCulture, format, args);
-            }
+            return CoopText.F(format, args);
         }
 
         public static void ReceiveGeneratePayload(string json)
@@ -1429,41 +1267,15 @@ namespace DeadCellsMultiplayerMod
             screen.addMenu(labelStr, cb, helpStr, false, color);
         }
 
-        // ---------------------------------------------------------------- ConnectionUI routing
-
-        /// <summary>Starts a ConnectionUI screen (clears the pending model, makes the hub visible).</summary>
-        internal static void UiBegin()
-        {
-            ConnectionUI.BeginMenu();
-        }
-
-        /// <summary>Adds a pretty button to the current ConnectionUI screen.</summary>
-        internal static void UiButton(string label, Action onClick, string? help = null, bool? isEnabled = null, int? textColor = null, bool fieldStyle = false)
-        {
-            ConnectionUI.AddPendingButton(label, help ?? string.Empty, isEnabled ?? true, textColor ?? 0xFFFFFF, onClick, fieldStyle);
-        }
-
-        /// <summary>Adds an informational line to the current ConnectionUI screen.</summary>
-        internal static void UiInfo(string text, int? infoColor = null)
-        {
-            ConnectionUI.AddPendingInfo(text, infoColor ?? 0xFFFFFF);
-        }
-
-        /// <summary>Renders the current ConnectionUI screen.</summary>
-        internal static void UiCommit(bool showLobby = false, bool hubLayout = false)
-        {
-            ConnectionUI.CommitMenu(showLobby, hubLayout);
-        }
-
         /// <summary>
         /// Leaves the multiplayer hub and forces a real TitleScreen main-menu rebuild.
-        /// ShowMultiplayerMenu clears menu items then restores isMainMenu=true, so a bare
-        /// <c>mainMenu()</c> can no-op and leave an empty title under a leftover hub.
         /// </summary>
         internal static void ReturnFromMultiplayerHubToTitle(TitleScreen screen)
         {
             try
             {
+                _steamFriendJoinPageActive = false;
+                CoopMenu.Close();
                 StopNetworkFromMenu();
                 ConnectionUI.DismissAndHide();
                 // Force TitleScreen to treat this as a fresh main-menu build.
@@ -1476,18 +1288,13 @@ namespace DeadCellsMultiplayerMod
                 _log?.Warning("[NetMod] Return to title failed: {Message}", ex.Message);
                 try
                 {
+                    CoopMenu.Close();
                     ConnectionUI.DismissAndHide();
                     SetIsMainMenu(screen, false);
                     screen.mainMenu();
                 }
                 catch { }
             }
-        }
-
-        /// <summary>Shows the ConnectionUI lobby display (player list + lobby code).</summary>
-        internal static void UiLobby()
-        {
-            ConnectionUI.ShowLobbyMode();
         }
 
         internal static object? GetMemberValue(object? obj, string name, bool ignoreCase)

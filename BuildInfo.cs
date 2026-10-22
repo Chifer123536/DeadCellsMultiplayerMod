@@ -6,8 +6,8 @@ namespace DeadCellsMultiplayerMod;
 /// </summary>
 internal static class BuildInfo
 {
-    public const string Version = "0.8.91-coop.1";
-    public const string SourceMarker = "v0.8.91-coop.1-p20";
+    public const string Version = "0.8.91-coop.2";
+    public const string SourceMarker = "v0.8.91-coop.2-p21";
     // Protocol 19: launch convergence, level-boundary identity, sequenced level seeds and ordered player positions.
     //   * The host re-publishes the full launch prerequisite set (GEN/CGDATA/RUNCOMMIT/SEED/
     //     RUNEXEC) until the client confirms, and GEN is host-cached and replayed to late joiners.
@@ -30,6 +30,8 @@ internal static class BuildInfo
     //   * Position snapshots carry the sender's monotonic timestamp; remote players are rendered
     //     through a jitter-adaptive interpolation buffer and ANIM/HEADANIM/ATK follow its clock.
     //   * DLCOWN / DLCSET negotiate the session DLC set; RunLaunchDescriptor.DlcFlags carries it.
+    // Protocol 21 (coop fork):
+    //   * BALANCE carries the host co-op difficulty and the mob damage multiplier applied to heroes.
     // These change how peers interpret the same exchange, so cross-version pairing is rejected.
-    public const int NetworkProtocolVersion = 20;
+    public const int NetworkProtocolVersion = 21;
 }

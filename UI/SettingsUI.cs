@@ -1,5 +1,7 @@
 using DeadCellsMultiplayerMod.Interface.ModuleInitializing;
 using DeadCellsMultiplayerMod.Mobs.MobsSynchronization;
+using DeadCellsMultiplayerMod.I18n;
+using DeadCellsMultiplayerMod.PortableCore;
 using dc.ui;
 using Hashlink.Virtuals;
 using HaxeProxy.Runtime;
@@ -80,13 +82,13 @@ public class SettingsUI :
                 OpenMultiplayerSettingsMenu(self);
             });
 
-            // Insert before vanilla entries so it appears at the top.
-            self.addSimpleWidget(
+            var entry = self.addSimpleWidget(
                 LobbySession.Localize("Multiplayer settings").AsHaxeString(),
                 null,
                 onSelect,
                 Ref<int>.From(ref leftPadding),
                 null);
+            CoopText.FitTree(entry);
         }
         catch (Exception ex)
         {
@@ -165,8 +167,11 @@ public class SettingsUI :
             if (widgetParent == null)
                 return;
 
+            AddGeneralSettingsWidgets(self, widgetParent);
             AddMobsSettingsWidgets(self, widgetParent);
             AddDebugSettingsWidgets(self, widgetParent);
+            CoopText.FitTree(widgetParent);
+            CoopText.FitTree(self.title);
 
             int leftPadding = 5;
             HlAction onBack = new HlAction(() =>
@@ -190,12 +195,82 @@ public class SettingsUI :
         }
     }
 
+    private void AddGeneralSettingsWidgets(Options self, dc.h2d.Flow widgetParent)
+    {
+        if (self == null || widgetParent == null)
+            return;
+
+        AddSectionLabel(self, widgetParent, "General");
+
+        var choices = CoopText.Choices;
+        var labels = ArrayUtils.CreateDyn();
+        var current = 0;
+        for (int i = 0; i < choices.Length; i++)
+        {
+            labels.array.pushDyn(CoopText.ChoiceLabel(choices[i]).AsHaxeString());
+            if (choices[i] == CoopText.Mode)
+                current = i;
+        }
+
+        int leftPadding = 0;
+        self.addListWidget(
+            LobbySession.Localize("Mod language").AsHaxeString(),
+            LobbySession.Localize("Language of the co-op menus. \"As in game\" follows the game language.").AsHaxeString(),
+            new HlAction<int>(index => OnModLanguageChanged(self, index)),
+            current,
+            choices.Length,
+            (dc.hl.types.ArrayObj)labels.array,
+            Ref<int>.From(ref leftPadding),
+            widgetParent);
+    }
+
+    private static void OnModLanguageChanged(Options self, int index)
+    {
+        var choices = CoopText.Choices;
+        if (index < 0 || index >= choices.Length || choices[index] == CoopText.Mode)
+            return;
+
+        CoopText.SetMode(choices[index]);
+        MainThreadPump.EnqueueMainThread(() =>
+        {
+            try
+            {
+                if (IsMultiplayerSettingsContext(self))
+                    self.setSection(new OptionsSection.S_Credits());
+            }
+            catch
+            {
+            }
+        });
+    }
+
     private void AddMobsSettingsWidgets(Options self, dc.h2d.Flow widgetParent)
     {
         if (self == null || widgetParent == null)
             return;
 
         AddSectionLabel(self, widgetParent, "Mobs settings");
+
+        var difficulties = CoopBalance.All;
+        var difficultyLabels = ArrayUtils.CreateDyn();
+        var currentDifficulty = 0;
+        for (int i = 0; i < difficulties.Length; i++)
+        {
+            difficultyLabels.array.pushDyn(LobbySession.GetDifficultyName(difficulties[i]).AsHaxeString());
+            if (difficulties[i] == CoopBalanceSync.HostDifficulty)
+                currentDifficulty = i;
+        }
+
+        int difficultyPadding = 0;
+        self.addListWidget(
+            LobbySession.Localize("Co-op difficulty").AsHaxeString(),
+            LobbySession.Localize("Scales mob health, boss health and mob damage by the number of players. Set by the host.").AsHaxeString(),
+            new HlAction<int>(OnCoopDifficultyChanged),
+            currentDifficulty,
+            difficulties.Length,
+            (dc.hl.types.ArrayObj)difficultyLabels.array,
+            Ref<int>.From(ref difficultyPadding),
+            widgetParent);
 
         bool enabledNow = MultiplayerSettingsStorage.EnableMobsSync;
         self.addToggleWidget(
@@ -242,6 +317,26 @@ public class SettingsUI :
             Ref<bool>.From(ref bossesHpRawDisplay),
             Ref<double>.From(ref bossesHpMin),
             Ref<double>.From(ref bossesHpMax),
+            null,
+            Ref<int>.Null);
+
+        double mobsDamageValue = MultiplayerSettingsStorage.MobsDamageMultiplier;
+        double mobsDamageStep = 0.05;
+        bool mobsDamagePercentDisplay = false;
+        bool mobsDamageRawDisplay = true;
+        double mobsDamageMin = 0.25;
+        double mobsDamageMax = 4.00;
+
+        self.addSliderWidget(
+            LobbySession.Localize("Mobs damage multiplier").AsHaxeString(),
+            new HlAction<double>(OnMobsDamageSliderChanged),
+            mobsDamageValue,
+            Ref<double>.From(ref mobsDamageStep),
+            widgetParent,
+            Ref<bool>.From(ref mobsDamagePercentDisplay),
+            Ref<bool>.From(ref mobsDamageRawDisplay),
+            Ref<double>.From(ref mobsDamageMin),
+            Ref<double>.From(ref mobsDamageMax),
             null,
             Ref<int>.Null);
 
@@ -558,5 +653,20 @@ public class SettingsUI :
     {
         MultiplayerSettingsStorage.BossesHpMultiplier = value;
         ModEntry._net?.SendHpMultipliers();
+    }
+
+    static void OnCoopDifficultyChanged(int index)
+    {
+        var difficulties = CoopBalance.All;
+        if (index < 0 || index >= difficulties.Length)
+            return;
+        MultiplayerSettingsStorage.CoopDifficulty = CoopBalance.ToWire(difficulties[index]);
+        CoopBalanceSync.OnSettingsChanged();
+    }
+
+    static void OnMobsDamageSliderChanged(double value)
+    {
+        MultiplayerSettingsStorage.MobsDamageMultiplier = value;
+        CoopBalanceSync.OnSettingsChanged();
     }
 }

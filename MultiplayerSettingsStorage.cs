@@ -27,9 +27,15 @@ public sealed class MultiplayerSettingsData
 
     public double BossesHpMultiplier { get; set; } = 1.0;
 
+    public double MobsDamageMultiplier { get; set; } = 1.0;
+
+    public string CoopDifficulty { get; set; } = "standard";
+
     public bool SyncVerticalPosition { get; set; } = false;
 
     public int CoopDlcPreferenceMask { get; set; } = 0x1F;
+
+    public string ModLanguage { get; set; } = MultiplayerSettingsStorage.ModLanguageAuto;
 
     public bool ModuleMultiplayerModLangEnabled { get; set; } = true;
 
@@ -70,6 +76,7 @@ public static class MultiplayerSettingsStorage
     private const double HpMultiplierMin = 0.25;
     private const double HpMultiplierMax = 8.00;
     public const string NoStartPerkValue = "None";
+    public const string ModLanguageAuto = "auto";
 
     private static readonly object SyncRoot = new();
     private static readonly Config<MultiplayerSettingsData> Config = new(ConfigName);
@@ -174,6 +181,50 @@ public static class MultiplayerSettingsStorage
         }
     }
 
+    public static double MobsDamageMultiplier
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().MobsDamageMultiplier;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var clamped = Clamp(value, HpMultiplierMin, HpMultiplierMax);
+                var data = EnsureDataNormalizedUnsafe();
+                if (Approximately(data.MobsDamageMultiplier, clamped))
+                    return;
+
+                data.MobsDamageMultiplier = clamped;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static string CoopDifficulty
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().CoopDifficulty;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var normalized = NormalizeCoopDifficulty(value);
+                var data = EnsureDataNormalizedUnsafe();
+                if (string.Equals(data.CoopDifficulty, normalized, StringComparison.Ordinal))
+                    return;
+
+                data.CoopDifficulty = normalized;
+                SaveUnsafe();
+            }
+        }
+    }
+
     public static bool SyncVerticalPosition
     {
         get
@@ -212,6 +263,28 @@ public static class MultiplayerSettingsStorage
                     return;
 
                 data.CoopDlcPreferenceMask = normalized;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static string ModLanguage
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().ModLanguage;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var normalized = NormalizeModLanguage(value);
+                var data = EnsureDataNormalizedUnsafe();
+                if (string.Equals(data.ModLanguage, normalized, StringComparison.Ordinal))
+                    return;
+
+                data.ModLanguage = normalized;
                 SaveUnsafe();
             }
         }
@@ -448,10 +521,31 @@ public static class MultiplayerSettingsStorage
             changed = true;
         }
 
+        var mobsDamage = Clamp(data.MobsDamageMultiplier, HpMultiplierMin, HpMultiplierMax);
+        if (!Approximately(data.MobsDamageMultiplier, mobsDamage))
+        {
+            data.MobsDamageMultiplier = mobsDamage;
+            changed = true;
+        }
+
+        var normalizedDifficulty = NormalizeCoopDifficulty(data.CoopDifficulty);
+        if (!string.Equals(data.CoopDifficulty, normalizedDifficulty, StringComparison.Ordinal))
+        {
+            data.CoopDifficulty = normalizedDifficulty;
+            changed = true;
+        }
+
         var normalizedPerkId = NormalizePerkId(data.DebugStartPerkId);
         if (!string.Equals(data.DebugStartPerkId, normalizedPerkId, StringComparison.Ordinal))
         {
             data.DebugStartPerkId = normalizedPerkId;
+            changed = true;
+        }
+
+        var normalizedLanguage = NormalizeModLanguage(data.ModLanguage);
+        if (!string.Equals(data.ModLanguage, normalizedLanguage, StringComparison.Ordinal))
+        {
+            data.ModLanguage = normalizedLanguage;
             changed = true;
         }
 
@@ -504,6 +598,18 @@ public static class MultiplayerSettingsStorage
         return string.Equals(trimmed, NoStartPerkValue, StringComparison.OrdinalIgnoreCase)
             ? NoStartPerkValue
             : trimmed;
+    }
+
+    private static string NormalizeModLanguage(string? value)
+    {
+        var trimmed = value?.Trim().ToLowerInvariant();
+        return trimmed is "en" or "ru" ? trimmed : ModLanguageAuto;
+    }
+
+    private static string NormalizeCoopDifficulty(string? value)
+    {
+        var trimmed = value?.Trim().ToLowerInvariant();
+        return trimmed is "relaxed" or "hard" ? trimmed : "standard";
     }
 
     private static void SaveUnsafe()

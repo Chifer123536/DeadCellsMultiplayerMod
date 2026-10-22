@@ -203,7 +203,7 @@ namespace DeadCellsMultiplayerMod
 
         internal static string GetReadyButtonLabel()
         {
-            return ReadSessionSnapshot().LocalReady ? "Ready: On" : "Ready: Off";
+            return ReadSessionSnapshot().LocalReady ? Localize("Ready: yes") : Localize("Ready: no");
         }
 
         internal static string GetPendingLaunchSummaryLabel(TitleScreen? screen)
@@ -215,9 +215,7 @@ namespace DeadCellsMultiplayerMod
             if (action == PendingLaunchAction.LoadSave)
             {
                 var continueCustom = ResolveCurrentSaveIsCustom(screen);
-                return string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"Continue ({GetModeLabel(continueCustom)})");
+                return FormatLocalized("Continue ({0})", GetModeLabel(continueCustom));
             }
 
             return GetModeLabel(custom);

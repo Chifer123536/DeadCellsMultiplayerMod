@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using dc;
@@ -10,6 +10,7 @@ using ModCore.Modules;
 using ModCore.Utilities;
 using Serilog;
 using DeadCellsMultiplayerMod.Tools;
+using DeadCellsMultiplayerMod.I18n;
 
 namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
 {
@@ -44,12 +45,12 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
         private const int CfUnicodeText = 13;
         private const uint GmemMoveable = 0x0002;
 
-        private static readonly int PromptPlaceholderColor = 0x6E778A;
-        private static readonly int PromptValueColor = 0xE8EEF7;
-        private static readonly int PromptCaretColor = 0x59D5FF;
-        private static readonly int PromptSelectionColor = 0x2F6FA8;
-        private static readonly int PromptFieldBorder = 0x46546F;
-        private static readonly int PromptFieldFace = 0x0C121D;
+        private static readonly int PromptPlaceholderColor = 0x7A746A;
+        private static readonly int PromptValueColor = 0xF2EEE6;
+        private static readonly int PromptCaretColor = 0xFFDE00;
+        private static readonly int PromptSelectionColor = 0x6B5A1E;
+        private static readonly int PromptFieldBorder = 0x5A5040;
+        private static readonly int PromptFieldFace = 0x0E0C0A;
 
         private dc.h2d.Object? _promptRoot;
         private dc.h2d.Object? _promptFieldParent;
@@ -138,7 +139,33 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
 
             EnsurePromptWindowHook();
             SetHxdTextInput(enabled: true);
+            SetTitleControlsLocked(true);
+            this._promptUnlockFrames = 0;
             RebuildTextPromptUi();
+        }
+
+        int _promptUnlockFrames;
+
+        void SetTitleControlsLocked(bool locked)
+        {
+            try
+            {
+                if (this.parent is dc.pr.TitleScreen title && title.controller != null)
+                    title.controller.manualLock = locked;
+            }
+            catch
+            {
+            }
+        }
+
+        void TickPromptControlsUnlock()
+        {
+            if (this._promptOpen || this._promptUnlockFrames <= 0)
+                return;
+
+            this._promptUnlockFrames--;
+            if (this._promptUnlockFrames == 0)
+                SetTitleControlsLocked(false);
         }
 
         private void CloseTextPrompt(bool apply)
@@ -153,6 +180,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
             var value = this._promptBuffer;
 
             this._promptOpen = false;
+            this._promptUnlockFrames = 2;
             this._promptOnOk = null;
             this._promptOnCancel = null;
             this._promptValueText = null;
@@ -536,6 +564,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
 
         private void TickTextPrompt()
         {
+            TickPromptControlsUnlock();
             if (!this._promptOpen)
                 return;
 
@@ -725,7 +754,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                 card);
             title.customScale = 0.58 * textUi;
             title.onResize();
-            title.textColor = 0xF7FC65;
+            title.textColor = AccentColor;
             CenterMenuText(title, this._promptTitle, pad, panelW - pad * 2, 0.58 * textUi);
             title.y = pad;
 
@@ -781,8 +810,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
 
             double btnW = (fieldW - 12.0 * uiScale) * 0.5;
             double btnY = panelH - pad - btnH;
-            PlacePromptButton(GetText.Instance.GetString("OK"), fieldX, btnY, btnW, btnH, textUi, uiScale, () => CloseTextPrompt(apply: true), card);
-            PlacePromptButton(GetText.Instance.GetString("Cancel"), fieldX + btnW + 12.0 * uiScale, btnY, btnW, btnH, textUi, uiScale, () => CloseTextPrompt(apply: false), card);
+            PlacePromptButton(CoopText.T("OK"), fieldX, btnY, btnW, btnH, textUi, uiScale, () => CloseTextPrompt(apply: true), card);
+            PlacePromptButton(CoopText.T("Cancel"), fieldX + btnW + 12.0 * uiScale, btnY, btnW, btnH, textUi, uiScale, () => CloseTextPrompt(apply: false), card);
         }
 
         private static void DrawPromptFieldBox(Graphics g, double x, double y, double w, double h)

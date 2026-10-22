@@ -313,11 +313,10 @@ public static class BossSyncHelpers
         if (mob == null)
             return 1;
 
-        var baseMultiplier = playerCount > 1
-            ? (IsBossMob(mob)
-                ? 1 + (playerCount - 1) * BossSyncConstants.BossHpMultiplierPerPlayer
-                : 1 + (playerCount - 1) * BossSyncConstants.RegularMobHpMultiplierPerPlayer)
-            : 1.0;
+        var balance = DeadCellsMultiplayerMod.PortableCore.CoopBalance.For(
+            DeadCellsMultiplayerMod.PortableCore.CoopBalance.Parse(MultiplayerSettingsStorage.CoopDifficulty),
+            playerCount);
+        var baseMultiplier = IsBossMob(mob) ? balance.BossHp : balance.MobHp;
 
         var userMultiplier = IsBossMob(mob)
             ? MultiplayerSettingsStorage.BossesHpMultiplier

@@ -1345,7 +1345,7 @@ namespace DeadCellsMultiplayerMod
 
         private static string Localize(string message)
         {
-            return GetText.Instance.GetString(message);
+            return DeadCellsMultiplayerMod.I18n.CoopText.T(message);
         }
 
         private static string FormatLocalized(string format, params object[] args)

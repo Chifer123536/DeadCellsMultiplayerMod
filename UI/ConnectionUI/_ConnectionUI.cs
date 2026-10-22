@@ -28,9 +28,11 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
             public readonly bool IsHost;
             public readonly bool IsYou;
             public readonly bool IsConnecting;
+            public readonly bool Ready;
 
-            public LobbyPlayerSlot(bool occupied, string nick, string skin, string head, bool isHost, bool isYou, bool isConnecting)
+            public LobbyPlayerSlot(bool occupied, string nick, string skin, string head, bool isHost, bool isYou, bool isConnecting, bool ready = false)
             {
+                Ready = ready;
                 Occupied = occupied;
                 Nick = nick ?? string.Empty;
                 Skin = string.IsNullOrWhiteSpace(skin) ? "PrisonerDefault" : skin.Trim();
@@ -148,7 +150,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                         head: localHead,
                         isHost: true,
                         isYou: true,
-                        isConnecting: false);
+                        isConnecting: false,
+                        ready: session.LocalReady);
 
                     int write = 1;
                     if (hasSnapshots)
@@ -164,6 +167,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                             string displayName = GetPlayerName(localId, remote.Id, remote.Username ?? string.Empty);
                             string skin = ResolveRemoteSkin(localId, remote.Id);
                             string head = ResolveRemoteHeadSkin(localId, remote.Id);
+                            net.TryGetRemoteReady(remote.Id, out var remoteReady);
                             slots[write++] = new LobbyPlayerSlot(
                                 occupied: true,
                                 nick: displayName,
@@ -171,7 +175,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                                 head: head,
                                 isHost: false,
                                 isYou: false,
-                                isConnecting: false);
+                                isConnecting: false,
+                                ready: remoteReady);
                         }
                     }
                 }
@@ -219,6 +224,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                             hostHead = cachedHostHead.Trim();
                     }
 
+                    net.TryGetRemoteReady(hostId, out var hostReady);
                     slots[0] = new LobbyPlayerSlot(
                         occupied: true,
                         nick: hostName,
@@ -226,7 +232,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                         head: hostHead,
                         isHost: true,
                         isYou: false,
-                        isConnecting: false);
+                        isConnecting: false,
+                        ready: hostReady);
 
                     slots[1] = new LobbyPlayerSlot(
                         occupied: true,
@@ -235,7 +242,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                         head: localHead,
                         isHost: false,
                         isYou: true,
-                        isConnecting: false);
+                        isConnecting: false,
+                        ready: session.LocalReady);
 
                     int write = 2;
                     if (hasSnapshots)
@@ -249,6 +257,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                             string displayName = GetPlayerName(localId, remote.Id, remote.Username ?? string.Empty);
                             string skin = ResolveRemoteSkin(localId, remote.Id);
                             string head = ResolveRemoteHeadSkin(localId, remote.Id);
+                            net.TryGetRemoteReady(remote.Id, out var remoteReady);
                             slots[write++] = new LobbyPlayerSlot(
                                 occupied: true,
                                 nick: displayName,
@@ -256,7 +265,8 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                                 head: head,
                                 isHost: false,
                                 isYou: false,
-                                isConnecting: false);
+                                isConnecting: false,
+                                ready: remoteReady);
                         }
                     }
                 }
@@ -296,6 +306,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.Connection
                 sb.Append(s.IsHost ? 'H' : '-');
                 sb.Append(s.IsYou ? 'Y' : '-');
                 sb.Append(s.IsConnecting ? 'C' : '-');
+                sb.Append(s.Ready ? 'R' : '-');
             }
             return sb.ToString();
         }
