@@ -10,7 +10,7 @@ public sealed partial class NetNode
         if (!HasAnyConnection()) return;
         if (ID <= 0) return;
         var positionSequence = Interlocked.Increment(ref _nextPositionSequence);
-        var line = BuildPosLine(ID, cx, cy, dir, levelId, positionSequence);
+        var line = BuildPosLine(ID, cx, cy, dir, levelId, positionSequence, MonotonicMs());
         _ = SendLineSafe(line);
     }
 

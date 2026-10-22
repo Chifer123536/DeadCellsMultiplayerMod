@@ -144,6 +144,8 @@ namespace DeadCellsMultiplayerMod
         private string? _lastAnimSent;
         private int? _lastAnimQueueSent;
         private bool? _lastAnimGSent;
+        long _lastAnimSentAtMs;
+        const long AnimKeyframeIntervalMs = 250;
         private bool _visualSyncFailureLogged;
         private long _suppressHeroAnimUntilTicks;
         /// <summary>
@@ -1503,6 +1505,7 @@ namespace DeadCellsMultiplayerMod
             {
                 stepStart = RuntimeHitchWatch.Start();
                 SendHeroCoords();
+                RefreshHeroAnimKeyframe();
                 LogHeroUpdateStepIfSlow("ModEntry.OnHeroUpdate.SendHeroCoords", stepStart, null);
             }
 

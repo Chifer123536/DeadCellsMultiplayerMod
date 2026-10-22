@@ -1144,7 +1144,8 @@ public sealed partial class NetNode
         out int dir,
         out bool hasDir,
         out string? levelId,
-        out long positionSequence)
+        out long positionSequence,
+        out double senderMs)
     {
         remoteId = 0;
         rx = 0;
@@ -1153,6 +1154,7 @@ public sealed partial class NetNode
         hasDir = false;
         levelId = null;
         positionSequence = 0;
+        senderMs = 0;
 
         var parts = line.Split('|');
         if (parts.Length >= 4 &&
@@ -1170,6 +1172,10 @@ public sealed partial class NetNode
                 levelId = parts[4].Trim();
             if (parts.Length >= 6)
                 long.TryParse(parts[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out positionSequence);
+            if (parts.Length >= 7 &&
+                long.TryParse(parts[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSenderMs) &&
+                parsedSenderMs > 0)
+                senderMs = parsedSenderMs;
             return true;
         }
 

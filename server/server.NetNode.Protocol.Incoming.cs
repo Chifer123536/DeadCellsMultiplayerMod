@@ -932,10 +932,7 @@ public sealed partial class NetNode
                 lock (_sync)
                 {
                     var state = GetOrCreateRemoteLocked(effectiveId.Value);
-                    state.Anim = animName;
-                    state.AnimQueue = q;
-                    state.AnimG = gFlag;
-                    state.HasAnim = true;
+                    GateRemoteAnimLocked(state, animName, q, gFlag);
                     state.HasRemote = true;
                     _hasRemote = true;
                     if (_primaryRemoteId == 0)
@@ -961,8 +958,7 @@ public sealed partial class NetNode
                 lock (_sync)
                 {
                     var state = GetOrCreateRemoteLocked(effectiveId.Value);
-                    state.HeadAnim = animName;
-                    state.HasHeadAnim = true;
+                    GateRemoteHeadAnimLocked(state, animName);
                     state.HasRemote = true;
                     _hasRemote = true;
                     if (_primaryRemoteId == 0)
@@ -1016,7 +1012,7 @@ public sealed partial class NetNode
                 lock (_sync)
                 {
                     var state = GetOrCreateRemoteLocked(effectiveId.Value);
-                    AddBoundedLocked(_pendingAttacks, new RemoteAttack(effectiveId.Value, kind, slot, permanentId, ammo, action), PendingAttackLimit);
+                    GateRemoteAttackLocked(state, new RemoteAttack(effectiveId.Value, kind, slot, permanentId, ammo, action));
                     state.HasRemote = true;
                     _hasRemote = true;
                     if (_primaryRemoteId == 0)
@@ -1382,7 +1378,7 @@ public sealed partial class NetNode
             return false;
         }
 
-        if (TryParsePositionLine(line, senderId, out var remoteId, out var cx, out var cy, out var dir, out var hasDir, out var positionLevelId, out var positionSequence))
+        if (TryParsePositionLine(line, senderId, out var remoteId, out var cx, out var cy, out var dir, out var hasDir, out var positionLevelId, out var positionSequence, out var senderMs))
         {
             if (forceSenderId && senderId.HasValue)
                 remoteId = senderId.Value;
@@ -1407,7 +1403,13 @@ public sealed partial class NetNode
                 state.Y = cy;
                 state.HasPosition = true;
                 if (!string.IsNullOrWhiteSpace(positionLevelId))
-                    state.LevelId = ClampProtocolText(positionLevelId, MaxIdentityFieldChars);
+                {
+                    var clampedLevelId = ClampProtocolText(positionLevelId, MaxIdentityFieldChars);
+                    if (!string.IsNullOrEmpty(state.LevelId) &&
+                        !string.Equals(state.LevelId, clampedLevelId, StringComparison.Ordinal))
+                        ResetRemoteMotionLocked(state);
+                    state.LevelId = clampedLevelId;
+                }
                 if (hasDir)
                 {
                     state.Dir = dir;
@@ -1416,6 +1418,7 @@ public sealed partial class NetNode
                 {
                     state.Dir = cx < prevX ? -1 : 1;
                 }
+                PushRemoteMotionLocked(state, senderMs, cx, cy, state.Dir);
                 state.HasRemote = true;
                 _hasRemote = true;
                 if (_primaryRemoteId == 0)
@@ -1423,7 +1426,7 @@ public sealed partial class NetNode
                 forwardDir = state.Dir;
             }
             if (_role == NetRole.Host && senderId.HasValue)
-                forwardLine = BuildPosLine(remoteId, cx, cy, forwardDir, positionLevelId, positionSequence);
+                forwardLine = BuildPosLine(remoteId, cx, cy, forwardDir, positionLevelId, positionSequence, senderMs);
         }
 
         return true;

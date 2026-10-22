@@ -1789,6 +1789,20 @@ namespace DeadCellsMultiplayerMod
             _lastAnimSent = anim;
             _lastAnimQueueSent = queueAnim;
             _lastAnimGSent = g;
+            _lastAnimSentAtMs = Environment.TickCount64;
+        }
+
+        void RefreshHeroAnimKeyframe()
+        {
+            var anim = _lastAnimSent;
+            if (_netRole == NetRole.None || _net == null || string.IsNullOrWhiteSpace(anim))
+                return;
+            if (Environment.TickCount64 - _lastAnimSentAtMs < AnimKeyframeIntervalMs)
+                return;
+            if (!ShouldLoopRemoteAnim(anim))
+                return;
+
+            SendHeroAnim(anim, _lastAnimQueueSent, _lastAnimGSent, force: true);
         }
 
 

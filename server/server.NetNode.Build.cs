@@ -154,11 +154,11 @@ public sealed partial class NetNode
             $"PREVIVE|{request.ReviverId}|{request.TargetId}\n");
     }
 
-    private static string BuildPosLine(int id, double cx, double cy, int dir, string? levelId = null, long positionSequence = 0)
+    private static string BuildPosLine(int id, double cx, double cy, int dir, string? levelId = null, long positionSequence = 0, double senderMs = 0)
     {
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"{id}|{cx}|{cy}|{dir}|{SanitizeWireToken(levelId)}|{positionSequence}\n");
+            $"{id}|{cx}|{cy}|{dir}|{SanitizeWireToken(levelId)}|{positionSequence}|{(long)senderMs}\n");
     }
 
     /// <summary>

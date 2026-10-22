@@ -36,6 +36,7 @@ public sealed partial class NetNode
         public int WeaponPermanentId;
         public int WeaponAmmo = int.MinValue;
         public bool HasWeaponUpdate;
+        public readonly RemoteMotionState Motion = new();
 
         public RemotePlayerState(int id)
         {

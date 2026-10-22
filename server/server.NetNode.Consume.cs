@@ -86,10 +86,19 @@ public sealed partial class NetNode
             }
 
             snapshot = RentConsumedList<RemoteSnapshot>(_remotes.Count);
+            var nowMs = MonotonicMs();
             foreach (var state in _remotes.Values)
             {
                 if (!state.HasRemote || !state.HasPosition)
                     continue;
+
+                ReleaseDueRemoteVisualsLocked(state, nowMs);
+                if (!TrySampleRemoteMotionLocked(state, nowMs, out var drawX, out var drawY, out var drawDir))
+                {
+                    drawX = state.X;
+                    drawY = state.Y;
+                    drawDir = state.Dir;
+                }
 
                 var hasAnim = state.HasAnim;
                 var hasHeadAnim = state.HasHeadAnim;
@@ -103,9 +112,9 @@ public sealed partial class NetNode
 
                 snapshot.Add(new RemoteSnapshot(
                     state.Id,
-                    state.X,
-                    state.Y,
-                    state.Dir,
+                    drawX,
+                    drawY,
+                    drawDir,
                     state.LevelId,
                     roomLevelId,
                     roomId,
@@ -154,7 +163,11 @@ public sealed partial class NetNode
     }
 
     public bool TryConsumeRemoteAttacks(out List<RemoteAttack> attacks)
-        => TryConsumePending(_pendingAttacks, out attacks);
+    {
+        lock (_sync)
+            ReleaseDueRemoteAttacksLocked(MonotonicMs());
+        return TryConsumePending(_pendingAttacks, out attacks);
+    }
 
     public void ClearMobSyncQueues()
     {
@@ -186,6 +199,7 @@ public sealed partial class NetNode
                 // coordinate before the first fresh position packet arrived (especially visible
                 // after restart/Continue as a teammate inside a wall). Hide the remote until a new
                 // packet re-establishes both position and level identity.
+                ResetRemoteMotionLocked(state);
                 state.HasPosition = false;
                 state.LevelId = null;
                 state.RoomLevelId = null;
@@ -393,6 +407,7 @@ public sealed partial class NetNode
         {
             if (_primaryRemoteId != 0 && _remotes.TryGetValue(_primaryRemoteId, out var state))
             {
+                ReleaseDueRemoteVisualsLocked(state, MonotonicMs());
                 if (!state.HasAnim)
                 {
                     anim = null;
