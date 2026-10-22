@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using DeadCellsMultiplayerMod.PortableCore;
 
 public sealed partial class NetNode
@@ -19,11 +20,33 @@ public sealed partial class NetNode
         public readonly Queue<GatedAttack> Attacks = new();
     }
 
+    [ThreadStatic] static double _dispatchArrivalMs;
+
     internal static double MonotonicMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
+
+    static double ArrivalMs() => _dispatchArrivalMs > 0.0 ? _dispatchArrivalMs : MonotonicMs();
+
+    [DllImport("winmm.dll")]
+    static extern uint timeBeginPeriod(uint period);
+
+    [DllImport("winmm.dll")]
+    static extern uint timeEndPeriod(uint period);
+
+    static bool TryRaiseTimerResolution()
+    {
+        try { return timeBeginPeriod(1) == 0; } catch { return false; }
+    }
+
+    static void RestoreTimerResolution(bool raised)
+    {
+        if (!raised)
+            return;
+        try { timeEndPeriod(1); } catch { }
+    }
 
     void PushRemoteMotionLocked(RemotePlayerState state, double senderMs, double x, double y, int dir)
     {
-        var arrival = MonotonicMs();
+        var arrival = ArrivalMs();
         state.Motion.Buffer.Push(senderMs > 0.0 ? senderMs : arrival, arrival, x, y, dir);
     }
 
@@ -34,7 +57,7 @@ public sealed partial class NetNode
 
     void GateRemoteAnimLocked(RemotePlayerState state, string? anim, int? queue, bool? g)
     {
-        var now = MonotonicMs();
+        var now = ArrivalMs();
         var anims = state.Motion.Anims;
         while (anims.Count >= MaxGatedAnimEvents)
             anims.Dequeue();
@@ -43,7 +66,7 @@ public sealed partial class NetNode
 
     void GateRemoteHeadAnimLocked(RemotePlayerState state, string anim)
     {
-        var now = MonotonicMs();
+        var now = ArrivalMs();
         var heads = state.Motion.HeadAnims;
         while (heads.Count >= MaxGatedAnimEvents)
             heads.Dequeue();
@@ -52,7 +75,7 @@ public sealed partial class NetNode
 
     void GateRemoteAttackLocked(RemotePlayerState state, RemoteAttack attack)
     {
-        var now = MonotonicMs();
+        var now = ArrivalMs();
         var attacks = state.Motion.Attacks;
         while (attacks.Count >= MaxGatedAttackEvents)
             AddBoundedLocked(_pendingAttacks, attacks.Dequeue().Attack, PendingAttackLimit);
@@ -127,6 +150,9 @@ public sealed partial class NetNode
  *  Позиции удалённого игрока → RemoteMotionBuffer (интерполяция с адаптивной задержкой).
  *  ANIM / HEADANIM / ATK не применяются сразу: встают в очередь со штампом времени отправителя
  *  и выпускаются, когда часы рендера буфера до него доходят — анимации и удары совпадают с позицией.
+ *  Время прихода берётся в сетевом потоке при чтении пакета (_dispatchArrivalMs), а не при обработке
+ *  на главном потоке — кадр игры не добавляет джиттер.
+ *  На время Steam-сессии таймер Windows 1 мс (timeBeginPeriod) — опрос приёма каждые ~8 мс, а не 15.6.
  *  Страховка: событие держится не дольше 300 мс; сброс буфера (смена уровня) выпускает всё сразу.
  *  Все методы *Locked вызываются под _sync.
  * ═══════════════════════════════════════

@@ -357,6 +357,7 @@ public sealed partial class NetNode
         // cancellation, and HandleLine dispatch can surface a malformed-packet exception. Letting
         // any of those escape turns this into a faulted, unobserved Task - noise during normal play
         // and one more background fault racing the runtime during shutdown.
+        var timerRaised = TryRaiseTimerResolution();
         try
         {
             await SteamBridgeLoopCore(ct).ConfigureAwait(false);
@@ -368,6 +369,10 @@ public sealed partial class NetNode
         {
             _log.Warning("[NetNode][Steam] transport loop stopped: {Message}", ex.Message);
         }
+        finally
+        {
+            RestoreTimerResolution(timerRaised);
+        }
     }
 
     private async Task SteamBridgeLoopCore(CancellationToken ct)
@@ -378,7 +383,7 @@ public sealed partial class NetNode
 
         _lastSteamPacketReceivedTicks = Stopwatch.GetTimestamp();
         var expectedChannel = _role == NetRole.Host ? SteamP2PChannelClientToHost : SteamP2PChannelHostToClient;
-        var drained = new List<(string Payload, int SenderId, SteamClientConnection? Connection)>();
+        var drained = new List<(string Payload, int SenderId, SteamClientConnection? Connection, double ArrivalMs)>();
 
         while (!ct.IsCancellationRequested && !_disposed)
         {
@@ -400,7 +405,7 @@ public sealed partial class NetNode
                 {
                     if (_steamHostId.m_SteamID != 0UL && packet.RemoteSteamId != _steamHostId.m_SteamID)
                         continue;
-                    drained.Add((packet.Payload, 1, null));
+                    drained.Add((packet.Payload, 1, null, MonotonicMs()));
                 }
                 else
                 {
@@ -408,14 +413,14 @@ public sealed partial class NetNode
                     if (!TryGetOrRegisterSteamClient(remoteSteamId, out var connection) || connection == null)
                         continue;
                     connection.MarkPacketReceived();
-                    drained.Add((packet.Payload, connection.AssignedId, connection));
+                    drained.Add((packet.Payload, connection.AssignedId, connection, MonotonicMs()));
                 }
             }
 
             for (var i = 0; i < drained.Count; i++)
             {
                 var entry = drained[i];
-                await ProcessIncomingSteamPayloadAsync(entry.Payload, entry.SenderId, entry.Connection, ct)
+                await ProcessIncomingSteamPayloadAsync(entry.Payload, entry.SenderId, entry.Connection, ct, entry.ArrivalMs)
                     .ConfigureAwait(false);
             }
 
@@ -757,7 +762,8 @@ public sealed partial class NetNode
         string payload,
         int senderId,
         SteamClientConnection? senderConnection,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        double arrivalMs = 0)
     {
         if (IsSupersededNetworkSession() || string.IsNullOrEmpty(payload))
             return;
@@ -791,6 +797,7 @@ public sealed partial class NetNode
 
                         try
                         {
+                            _dispatchArrivalMs = arrivalMs;
                             if (!HandleLine(lineCopy, senderId, out var forwardLine))
                             {
                                 if (_role == NetRole.Host && senderConnection != null)
@@ -806,6 +813,10 @@ public sealed partial class NetNode
                         catch (Exception ex)
                         {
                             _log.Warning("[NetNode][Steam] HandleLine(main-thread) failed: {msg}", ex.Message);
+                        }
+                        finally
+                        {
+                            _dispatchArrivalMs = 0;
                         }
                     }
                     finally
