@@ -512,3 +512,47 @@ msgstr "Прогресс кооператива синхронизирован: 
 #: Multiplayer online sync hardening
 msgid "Level failed to synchronize with the host. Return to the menu and rejoin."
 msgstr "Не удалось синхронизировать уровень с хостом. Вернитесь в меню и подключитесь снова."
+
+#: LobbySession.Dlc.cs
+msgid "DLC"
+msgstr "DLC"
+
+#: LobbySession.Dlc.cs
+msgid "Choose which DLC are used in this co-op session"
+msgstr "Выбрать DLC для этой кооп-сессии"
+
+#: LobbySession.Dlc.cs
+msgid "DLC: waiting for host"
+msgstr "DLC: ждём хоста"
+
+#: LobbySession.Dlc.cs
+msgid "DLC:"
+msgstr "DLC:"
+
+#: LobbySession.Dlc.cs
+msgid "none"
+msgstr "нет"
+
+#: LobbySession.Dlc.cs
+msgid "DLC for this co-op session. Only DLC owned by every player can be enabled."
+msgstr "DLC для этой сессии. Включить можно только те, что есть у всех игроков."
+
+#: LobbySession.Dlc.cs
+msgid "A run is in progress: changes apply to the next run."
+msgstr "Идёт забег: изменения вступят в силу со следующего."
+
+#: LobbySession.Dlc.cs
+msgid "Toggle this DLC for the session"
+msgstr "Включить или выключить это DLC для сессии"
+
+#: LobbySession.Dlc.cs
+msgid "Missing for:"
+msgstr "Нет у:"
+
+#: LobbySession.Dlc.cs
+msgid "Back to lobby"
+msgstr "Назад в лобби"
+
+#: LobbySession.Dlc.cs
+msgid "you"
+msgstr "тебя"

@@ -51,7 +51,7 @@ internal static partial class LobbySession
             initialLevelSeed: null,
             difficulty: bossCells,
             bossCells: bossCells,
-            dlcFlags: 0,
+            dlcFlags: CoopDlcSession.DescriptorFlags,
             saveSlot: ResolveSaveSlotNumber(null),
             route: route,
             targetArena: initialLevelId);
@@ -176,7 +176,10 @@ internal static partial class LobbySession
         // rejecting a valid launch that nothing would ever re-offer.
         var localNet = NetRef;
         if (localNet != null && localNet.IsAlive && !localNet.IsHost)
+        {
             RunLaunchCoordinator.EnsureClientRoleForIncomingLaunch();
+            CoopDlcSession.EnsureAppliedForLaunch(descriptor.DlcFlags);
+        }
 
         var accepted = RunLaunchCoordinator.TryAcceptRemoteDescriptor(
             descriptor,

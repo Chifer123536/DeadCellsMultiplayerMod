@@ -29,6 +29,8 @@ public sealed class MultiplayerSettingsData
 
     public bool SyncVerticalPosition { get; set; } = false;
 
+    public int CoopDlcPreferenceMask { get; set; } = 0x1F;
+
     public bool ModuleMultiplayerModLangEnabled { get; set; } = true;
 
     public bool ModuleCineHooksEnabled { get; set; } = true;
@@ -188,6 +190,28 @@ public static class MultiplayerSettingsStorage
                     return;
 
                 data.SyncVerticalPosition = value;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static int CoopDlcPreferenceMask
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().CoopDlcPreferenceMask & 0x1F;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var data = EnsureDataNormalizedUnsafe();
+                var normalized = value & 0x1F;
+                if (data.CoopDlcPreferenceMask == normalized)
+                    return;
+
+                data.CoopDlcPreferenceMask = normalized;
                 SaveUnsafe();
             }
         }

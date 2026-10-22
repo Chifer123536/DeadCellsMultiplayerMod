@@ -120,11 +120,13 @@ namespace DeadCellsMultiplayerMod
                 SetIsMainMenu(screen, false);
                 screen.clearMenu();
 
+                CoopDlcSession.OnHostingStarted();
                 UiBegin();
                 if (_menuTransport == ConnectionTransport.Steam)
                     UiInfo(Localize("Steam lobby — invite friends, then launch when everyone is Ready."), 0x9098A8);
                 else
                     UiInfo(Localize("LAN lobby — waiting for players. Launch unlocks when everyone is Ready."), 0x9098A8);
+                UiInfo(GetSessionDlcLabel(), 0x8A93A6);
                 var multiplayerSaveLabel = GetMultiplayerSaveButtonLabel();
                 var continueLabel = GetContinueButtonLabel(screen);
                 var startLabel = GetStartNormalModeButtonLabel();
@@ -137,6 +139,7 @@ namespace DeadCellsMultiplayerMod
                 UiButton("Custom Mode", () => OpenHostCustomMode(screen), Localize("Configure and launch multiplayer custom mode"), canLaunch);
                 UiButton(GetReadyButtonLabel(), () => ToggleLocalReadyFromMenu(screen), Localize("Toggle your ready state"));
                 UiButton(multiplayerSaveLabel, () => OpenMultiplayerSlotMenu(screen), Localize("Choose multiplayer save slot"));
+                UiButton(Localize("DLC"), () => ShowHostDlcMenu(screen), Localize("Choose which DLC are used in this co-op session"));
                 if (_menuTransport == ConnectionTransport.Steam && _steamLobbyId != 0UL)
                 {
                     UiButton(
@@ -204,6 +207,7 @@ namespace DeadCellsMultiplayerMod
                 UiBegin();
                 UiInfo(Localize("Connected — ready up and wait for the host to launch."), 0x9098A8);
                 UiInfo($"Selected mode: {GetPendingLaunchSummaryLabel(screen)}", 0xE0E0E0);
+                UiInfo(GetSessionDlcLabel(), 0x8A93A6);
                 if (_menuTransport == ConnectionTransport.Steam)
                     UiInfo(Localize("Transport: Steam"), 0x8A93A6);
                 else
@@ -302,6 +306,7 @@ namespace DeadCellsMultiplayerMod
         internal static void StopNetworkFromMenu()
         {
             ResetHostDisconnectCountdown();
+            CoopDlcSession.Restore("network stopped");
             try
             {
                 ModEntry.Instance?.StopNetworkFromMenu();
@@ -336,6 +341,7 @@ namespace DeadCellsMultiplayerMod
             SendLocalReadyState();
             SendCoopStateToRemote();
             SendLocalCosmeticsToRemote();
+            CoopDlcSession.OnConnected(role);
 
             if (role == NetRole.Host)
             {
@@ -449,6 +455,7 @@ namespace DeadCellsMultiplayerMod
 
             SetRole(NetRole.None);
             NetRef = null;
+            CoopDlcSession.Restore("host disconnected");
             _menuSelection = NetRole.None;
             ResetSteamState();
             ClearNetworkCaches();

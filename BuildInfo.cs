@@ -6,8 +6,8 @@ namespace DeadCellsMultiplayerMod;
 /// </summary>
 internal static class BuildInfo
 {
-    public const string Version = "0.8.91";
-    public const string SourceMarker = "v0.8.91-online-worldsync-p19";
+    public const string Version = "0.8.91-coop.1";
+    public const string SourceMarker = "v0.8.91-coop.1-p20";
     // Protocol 19: launch convergence, level-boundary identity, sequenced level seeds and ordered player positions.
     //   * The host re-publishes the full launch prerequisite set (GEN/CGDATA/RUNCOMMIT/SEED/
     //     RUNEXEC) until the client confirms, and GEN is host-cached and replayed to late joiners.
@@ -26,6 +26,10 @@ internal static class BuildInfo
     //     level id. Protocol 18 interpreted the second field as the seed itself.
     //   * Position snapshots carry the sender level id plus a monotonic sequence, so a delayed
     //     unreliable Steam packet from the previous passage cannot overwrite new-world coordinates.
+    // Protocol 20 (coop fork):
+    //   * Position snapshots carry the sender's monotonic timestamp; remote players are rendered
+    //     through a jitter-adaptive interpolation buffer and ANIM/HEADANIM/ATK follow its clock.
+    //   * DLCOWN / DLCSET negotiate the session DLC set; RunLaunchDescriptor.DlcFlags carries it.
     // These change how peers interpret the same exchange, so cross-version pairing is rejected.
-    public const int NetworkProtocolVersion = 19;
+    public const int NetworkProtocolVersion = 20;
 }

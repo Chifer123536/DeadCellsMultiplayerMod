@@ -185,6 +185,7 @@ namespace DeadCellsMultiplayerMod
                 return;
             }
 
+            CoopDlcSession.EnsureHostAppliedBeforeLaunch();
             StartHostServerOnly();
             ClearAuthoritativePendingNewGameLaunch();
             TrySendContinueLaunchPrerequisites(screen);
@@ -206,6 +207,8 @@ namespace DeadCellsMultiplayerMod
                 _log?.Warning("[NetMod] Failed to prepare custom mode user for selected multiplayer save slot");
                 return;
             }
+
+            CoopDlcSession.EnsureHostAppliedBeforeLaunch();
 
             SetAuthoritativePendingNewGameLaunch(
                 custom: true,
@@ -513,6 +516,7 @@ namespace DeadCellsMultiplayerMod
             if (!AllPlayersReady())
                 return;
 
+            CoopDlcSession.EnsureHostAppliedBeforeLaunch();
             StartHostServerOnly();
             SetAuthoritativePendingNewGameLaunch(
                 custom: false,

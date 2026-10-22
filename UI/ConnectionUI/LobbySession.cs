@@ -1385,6 +1385,7 @@ namespace DeadCellsMultiplayerMod
 
             SetRole(NetRole.None);
             NetRef = null;
+            CoopDlcSession.Restore("session closed");
             ResetClientConnectState();
             ResetLobbyReadyState();
             _menuSelection = NetRole.None;
