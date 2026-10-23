@@ -42,6 +42,7 @@ using dc.en.inter.door;
 using DeadCellsMultiplayerMod.Interaction;
 using DeadCellsMultiplayerMod.UI;
 using DeadCellsMultiplayerMod.AdvancedCoop;
+using DeadCellsMultiplayerMod.Emotes;
 
 
 using DeadCellsMultiplayerMod.Core.Services;
@@ -690,6 +691,7 @@ namespace DeadCellsMultiplayerMod
             Hook__EndCollectorPostSmashKS.__constructor__ += Hook__EndCollectorPostSmashKS__constructor__;
             Ghost.KingWeaponHooks.Install();
             CoopBalanceSync.Install();
+            ScrollChoiceSync.Install();
         }
 
         private static void Hook_GlowKey_applyGlowData(
@@ -1072,7 +1074,7 @@ namespace DeadCellsMultiplayerMod
             // normal single-player pause behavior instead of disabling pause just because the mod
             // is installed.
             var net = _net;
-            if (_netRole == NetRole.None || net == null || !net.IsAlive)
+            if (_netRole == NetRole.None || net == null || !net.IsAlive || ScrollChoiceSync.HoldsPause)
                 orig(self);
         }
 
@@ -1266,7 +1268,8 @@ namespace DeadCellsMultiplayerMod
                         !DeadCellsMultiplayerMod.Ghost.KingWeaponSupport.IsUnsafeRemoteGhostAnimation(play);
 
                     if (!DeadCellsMultiplayerMod.Ghost.KingWeaponSupport.IsInKingContext &&
-                        (!isAttackAnim || allowVisualOnlyWeaponAnim))
+                        (!isAttackAnim || allowVisualOnlyWeaponAnim) &&
+                        !EmoteSync.SuppressesHeroAnim(play))
                     {
                         SendHeroAnim(play, queueAnim, g);
                     }
@@ -1449,6 +1452,8 @@ namespace DeadCellsMultiplayerMod
             CheckRemoteKingRenderSafety("frame");
             LobbySession.TickMenu(dt);
             CoopBalanceSync.TickHost();
+            ScrollChoiceSync.Tick();
+            EmoteSync.Tick();
             DetectAndSendBossCine();
             ApplyReceivedBossHeroTeleport();
             ApplyReceivedBossCine();

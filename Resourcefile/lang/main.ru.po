@@ -29,6 +29,10 @@ msgstr "Прогресс кооператива синхронизирован: 
 msgid "you"
 msgstr "вас"
 
+#: Emotes/EmoteWheel.cs:86
+msgid "Emotes"
+msgstr "Эмоции"
+
 #: FakeDeath/FakeDeath.cs:1339
 msgid "Game Over"
 msgstr "Игра окончена"
@@ -45,9 +49,13 @@ msgstr "Забег не синхронизировался с другом. Ве
 msgid "As in game"
 msgstr "Как в игре"
 
-#: ModEntry/ModEntry.cs:1193
+#: ModEntry/ModEntry.cs:1195
 msgid "Level failed to synchronize with the host. Return to the menu and rejoin."
 msgstr "Не удалось синхронизировать уровень с хостом. Вернитесь в меню и подключитесь снова."
+
+#: ScrollChoice/ScrollChoiceSync.cs:308
+msgid "{0} is choosing..."
+msgstr "{0} выбирает..."
 
 #: UI/ConnectionUI/ConnectionUI.LobbyBeheaded.cs:212
 msgid "Free seat"
@@ -97,19 +105,19 @@ msgstr "Не удалось открыть список приглашений S
 msgid "Username"
 msgstr "Никнейм"
 
-#: UI/ConnectionUI/LobbySession.Connection.cs:269
+#: UI/ConnectionUI/LobbySession.Connection.cs:270
 msgid "Guest"
 msgstr "Гость"
 
-#: UI/ConnectionUI/LobbySession.Connection.cs:270
+#: UI/ConnectionUI/LobbySession.Connection.cs:271
 msgid "{0} disconnected from the server."
 msgstr "{0} отключился от сервера."
 
-#: UI/ConnectionUI/LobbySession.Connection.cs:313
+#: UI/ConnectionUI/LobbySession.Connection.cs:314
 msgid "Host disconnected from server."
 msgstr "Хост отключился от сервера."
 
-#: UI/ConnectionUI/LobbySession.Connection.cs:407
+#: UI/ConnectionUI/LobbySession.Connection.cs:408
 msgid "Back to menu in {0}..."
 msgstr "Возврат в меню через {0}..."
 
@@ -573,111 +581,119 @@ msgstr "Язык мода"
 msgid "Language of the co-op menus. \"As in game\" follows the game language."
 msgstr "Язык меню кооператива. «Как в игре» — тот же, что у игры."
 
-#: UI/SettingsUI.cs:266
+#: UI/SettingsUI.cs:243
+msgid "Scroll pick"
+msgstr "Выбор свитка"
+
+#: UI/SettingsUI.cs:244
+msgid "What happens for everyone while a player picks a scroll. Set by the host."
+msgstr "Что происходит у всех, пока игрок выбирает свиток. Выбирает хост."
+
+#: UI/SettingsUI.cs:307
 msgid "Co-op difficulty"
 msgstr "Сложность кооператива"
 
-#: UI/SettingsUI.cs:267
+#: UI/SettingsUI.cs:308
 msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
 msgstr "Здоровье мобов и боссов и урон мобов растут с числом игроков. Выбирает хост."
 
-#: UI/SettingsUI.cs:277
+#: UI/SettingsUI.cs:318
 msgid "Enable mobs sync"
 msgstr "Включить синхронизацию мобов"
 
-#: UI/SettingsUI.cs:291
+#: UI/SettingsUI.cs:332
 msgid "Mobs HP multiplier"
 msgstr "Множитель HP мобов"
 
-#: UI/SettingsUI.cs:311
+#: UI/SettingsUI.cs:352
 msgid "Bosses HP multiplier"
 msgstr "Множитель HP боссов"
 
-#: UI/SettingsUI.cs:331
+#: UI/SettingsUI.cs:372
 msgid "Mobs damage multiplier"
 msgstr "Множитель урона мобов"
 
-#: UI/SettingsUI.cs:345
+#: UI/SettingsUI.cs:386
 msgid "Sync vertical position"
 msgstr "Синхронизировать вертикальную позицию"
 
-#: UI/SettingsUI.cs:346
+#: UI/SettingsUI.cs:387
 msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
 msgstr "Применяет вертикальную позицию хоста к мобам под гравитацией. Выкл.: для ходячих только X; летающие по-прежнему синхронизируют Y. Вкл.: меньше рассинхрона, но наземные мобы могут дёргаться."
 
-#: UI/SettingsUI.cs:358
+#: UI/SettingsUI.cs:399
 msgid "Module: language"
 msgstr "Модуль: язык"
 
-#: UI/SettingsUI.cs:359
+#: UI/SettingsUI.cs:400
 msgid "Module: cinematics hooks"
 msgstr "Модуль: кат-сцены"
 
-#: UI/SettingsUI.cs:360
+#: UI/SettingsUI.cs:401
 msgid "Module: multiplayer UI"
 msgstr "Модуль: UI мультиплеера"
 
-#: UI/SettingsUI.cs:361
+#: UI/SettingsUI.cs:402
 msgid "Module: level init"
 msgstr "Модуль: инициализация уровня"
 
-#: UI/SettingsUI.cs:362
+#: UI/SettingsUI.cs:403
 msgid "Module: mobs sync"
 msgstr "Модуль: синхронизация мобов"
 
-#: UI/SettingsUI.cs:363
+#: UI/SettingsUI.cs:404
 msgid "Module: minimap reveal"
 msgstr "Модуль: раскрытие миникарты"
 
-#: UI/SettingsUI.cs:364
+#: UI/SettingsUI.cs:405
 msgid "Module: level exit sync"
 msgstr "Модуль: синхронизация выходов"
 
-#: UI/SettingsUI.cs:365
+#: UI/SettingsUI.cs:406
 msgid "Module: interaction sync"
 msgstr "Модуль: синхронизация взаимодействий"
 
-#: UI/SettingsUI.cs:366
+#: UI/SettingsUI.cs:407
 msgid "Module: connection UI"
 msgstr "Модуль: UI подключения"
 
-#: UI/SettingsUI.cs:367
+#: UI/SettingsUI.cs:408
 msgid "Module"
 msgstr "Модуль"
 
-#: UI/SettingsUI.cs:391
+#: UI/SettingsUI.cs:432
 msgid "Player immortal"
 msgstr "Бессмертие игрока"
 
-#: UI/SettingsUI.cs:399
+#: UI/SettingsUI.cs:440
 msgid "Use Explorer's Rune"
 msgstr "Руна следопыта"
 
-#: UI/SettingsUI.cs:407
+#: UI/SettingsUI.cs:448
 msgid "Mobs sync trace logging"
 msgstr "Журнал трассировки синхронизации мобов"
 
-#: UI/SettingsUI.cs:415
+#: UI/SettingsUI.cs:456
 msgid "Boss sync trace logging"
 msgstr "Трассировка синхронизации боссов"
 
-#: UI/SettingsUI.cs:423
+#: UI/SettingsUI.cs:464
 msgid "Show perf logs"
 msgstr "Логи производительности"
 
-#: UI/SettingsUI.cs:424
+#: UI/SettingsUI.cs:465
 msgid "Controls threshold-based [Perf] hitch and slowdown logging."
 msgstr "Запись подвисаний и замедлений [Perf] в лог."
 
-#: UI/SettingsUI.cs:435
+#: UI/SettingsUI.cs:476
 msgid "Start perk"
 msgstr "Стартовый перк"
 
-#: UI/SettingsUI.cs:442
+#: UI/SettingsUI.cs:483
 msgid "Previous perk"
 msgstr "Предыдущий перк"
 
-#: UI/SettingsUI.cs:449
+#: UI/SettingsUI.cs:490
 msgid "Next perk"
 msgstr "Следующий перк"
 
@@ -740,3 +756,51 @@ msgstr "У хоста нет сохранения для продолжения.
 #: dynamic
 msgid "Host has no coop id"
 msgstr "Сохранение хоста не привязано к кооперативу."
+
+#: dynamic
+msgid "No pause"
+msgstr "Без паузы"
+
+#: dynamic
+msgid "Pause"
+msgstr "Пауза"
+
+#: dynamic
+msgid "Pause and show choice"
+msgstr "Пауза и показ выбора"
+
+#: dynamic
+msgid "Player"
+msgstr "Игрок"
+
+#: dynamic
+msgid "Hello"
+msgstr "Привет"
+
+#: dynamic
+msgid "Yes"
+msgstr "Да"
+
+#: dynamic
+msgid "No"
+msgstr "Нет"
+
+#: dynamic
+msgid "What?!"
+msgstr "Чего?!"
+
+#: dynamic
+msgid "Sit"
+msgstr "Сесть"
+
+#: dynamic
+msgid "Dance"
+msgstr "Танец"
+
+#: dynamic
+msgid "Mock"
+msgstr "Дразнить"
+
+#: dynamic
+msgid "Get lost"
+msgstr "Отвали"

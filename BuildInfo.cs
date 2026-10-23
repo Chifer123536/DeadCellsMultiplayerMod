@@ -32,6 +32,10 @@ internal static class BuildInfo
     //   * DLCOWN / DLCSET negotiate the session DLC set; RunLaunchDescriptor.DlcFlags carries it.
     // Protocol 21 (coop fork):
     //   * BALANCE carries the host co-op difficulty and the mob damage multiplier applied to heroes.
+    // Protocol 22 (coop fork):
+    //   * SCROLLCFG / SCROLLOPEN / SCROLLSEL / SCROLLEND pause every peer while someone picks a
+    //     scroll and mirror the picker's cursor. A peer without them never pauses or resumes.
+    //   * EMOTE plays an emote on the sender's ghost; the emote's body anims are not sent as ANIM.
     // These change how peers interpret the same exchange, so cross-version pairing is rejected.
-    public const int NetworkProtocolVersion = 21;
+    public const int NetworkProtocolVersion = 22;
 }

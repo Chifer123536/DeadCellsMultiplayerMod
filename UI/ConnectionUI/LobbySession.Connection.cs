@@ -187,6 +187,7 @@ namespace DeadCellsMultiplayerMod
             SendLocalCosmeticsToRemote();
             CoopDlcSession.OnConnected(role);
             CoopBalanceSync.OnRemoteConnected();
+            ScrollChoiceSync.OnRemoteConnected();
 
             if (role == NetRole.Host)
             {

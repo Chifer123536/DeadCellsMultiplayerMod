@@ -222,6 +222,47 @@ public class SettingsUI :
             (dc.hl.types.ArrayObj)labels.array,
             Ref<int>.From(ref leftPadding),
             widgetParent);
+
+        AddScrollChoiceWidget(self, widgetParent);
+    }
+
+    static void AddScrollChoiceWidget(Options self, dc.h2d.Flow widgetParent)
+    {
+        var modes = ScrollChoiceWire.AllModes;
+        var labels = ArrayUtils.CreateDyn();
+        var current = 0;
+        for (int i = 0; i < modes.Length; i++)
+        {
+            labels.array.pushDyn(LobbySession.Localize(ScrollChoiceModeLabel(modes[i])).AsHaxeString());
+            if (modes[i] == ScrollChoiceSync.HostMode)
+                current = i;
+        }
+
+        int padding = 0;
+        self.addListWidget(
+            LobbySession.Localize("Scroll pick").AsHaxeString(),
+            LobbySession.Localize("What happens for everyone while a player picks a scroll. Set by the host.").AsHaxeString(),
+            new HlAction<int>(OnScrollChoiceModeChanged),
+            current,
+            modes.Length,
+            (dc.hl.types.ArrayObj)labels.array,
+            Ref<int>.From(ref padding),
+            widgetParent);
+    }
+
+    static string ScrollChoiceModeLabel(ScrollChoiceMode mode) => mode switch
+    {
+        ScrollChoiceMode.Off => "No pause",
+        ScrollChoiceMode.Pause => "Pause",
+        _ => "Pause and show choice"
+    };
+
+    static void OnScrollChoiceModeChanged(int index)
+    {
+        var modes = ScrollChoiceWire.AllModes;
+        if (index < 0 || index >= modes.Length)
+            return;
+        ScrollChoiceSync.SetHostMode(modes[index]);
     }
 
     private static void OnModLanguageChanged(Options self, int index)

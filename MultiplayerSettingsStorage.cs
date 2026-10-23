@@ -31,6 +31,8 @@ public sealed class MultiplayerSettingsData
 
     public string CoopDifficulty { get; set; } = "standard";
 
+    public string ScrollChoiceMode { get; set; } = "mirror";
+
     public bool SyncVerticalPosition { get; set; } = false;
 
     public int CoopDlcPreferenceMask { get; set; } = 0x1F;
@@ -220,6 +222,28 @@ public static class MultiplayerSettingsStorage
                     return;
 
                 data.CoopDifficulty = normalized;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static string ScrollChoiceMode
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().ScrollChoiceMode;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var normalized = NormalizeScrollChoiceMode(value);
+                var data = EnsureDataNormalizedUnsafe();
+                if (string.Equals(data.ScrollChoiceMode, normalized, StringComparison.Ordinal))
+                    return;
+
+                data.ScrollChoiceMode = normalized;
                 SaveUnsafe();
             }
         }
@@ -535,6 +559,13 @@ public static class MultiplayerSettingsStorage
             changed = true;
         }
 
+        var normalizedScrollMode = NormalizeScrollChoiceMode(data.ScrollChoiceMode);
+        if (!string.Equals(data.ScrollChoiceMode, normalizedScrollMode, StringComparison.Ordinal))
+        {
+            data.ScrollChoiceMode = normalizedScrollMode;
+            changed = true;
+        }
+
         var normalizedPerkId = NormalizePerkId(data.DebugStartPerkId);
         if (!string.Equals(data.DebugStartPerkId, normalizedPerkId, StringComparison.Ordinal))
         {
@@ -610,6 +641,12 @@ public static class MultiplayerSettingsStorage
     {
         var trimmed = value?.Trim().ToLowerInvariant();
         return trimmed is "relaxed" or "hard" ? trimmed : "standard";
+    }
+
+    static string NormalizeScrollChoiceMode(string? value)
+    {
+        var trimmed = value?.Trim().ToLowerInvariant();
+        return trimmed is "off" or "pause" ? trimmed : "mirror";
     }
 
     private static void SaveUnsafe()

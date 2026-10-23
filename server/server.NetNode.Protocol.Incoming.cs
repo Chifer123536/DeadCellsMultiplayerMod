@@ -459,6 +459,18 @@ public sealed partial class NetNode
         if (TryHandleBalanceLine(line))
             return true;
 
+        if (TryHandleScrollChoiceLine(line, senderId, forceSenderId, out var scrollForwardLine))
+        {
+            forwardLine = scrollForwardLine;
+            return true;
+        }
+
+        if (TryHandleEmoteLine(line, senderId, forceSenderId, out var emoteForwardLine))
+        {
+            forwardLine = emoteForwardLine;
+            return true;
+        }
+
         if (line.StartsWith(RunLaunchWireCodec.CommitTag + "|", StringComparison.Ordinal))
         {
             var payload = line[(RunLaunchWireCodec.CommitTag.Length + 1)..];
