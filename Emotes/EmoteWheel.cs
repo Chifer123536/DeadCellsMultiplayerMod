@@ -26,8 +26,10 @@ internal sealed class EmoteWheel
     readonly dc.h2d.Object _root;
     readonly Graphics[] _sectors = new Graphics[SlotCount];
     readonly Graphics[] _icons = new Graphics[SlotCount];
+    readonly Graphics _pointer;
     readonly dc.ui.Text? _label;
     readonly double _innerRadius;
+    readonly double _hubRadius;
     readonly double _outerRadius;
     readonly double _gap;
     readonly double _rim;
@@ -44,6 +46,7 @@ internal sealed class EmoteWheel
         _gap = 5.0 * unit;
         _rim = System.Math.Max(2.0, System.Math.Round(3.0 * unit));
         _push = 10.0 * unit;
+        _hubRadius = _innerRadius - 10.0 * unit;
         _openedAt = Environment.TickCount64;
 
         _root = new dc.h2d.Object(null);
@@ -71,7 +74,11 @@ internal sealed class EmoteWheel
         }
 
         var hub = new Graphics(_root);
-        DrawHub(hub, _innerRadius - 10.0 * unit);
+        DrawHub(hub, _hubRadius);
+
+        _pointer = new Graphics(_root);
+        DrawPointer(_pointer, pixel);
+        _pointer.visible = false;
 
         try
         {
@@ -150,6 +157,26 @@ internal sealed class EmoteWheel
         catch (Exception ex)
         {
             LobbySession.Log?.Warning("[Emotes] Wheel hover redraw failed: {Message}", ex.Message);
+        }
+    }
+
+    public void SetPointer(bool visible, double x, double y)
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            _pointer.visible = visible;
+            if (!visible)
+                return;
+            var reach = _hubRadius * 0.72;
+            _pointer.x = System.Math.Round(System.Math.Clamp(x, -1.0, 1.0) * reach);
+            _pointer.y = System.Math.Round(System.Math.Clamp(y, -1.0, 1.0) * reach);
+            _pointer.posChanged = true;
+        }
+        catch
+        {
         }
     }
 
@@ -241,6 +268,22 @@ internal sealed class EmoteWheel
         FillCircle(g, radius, FillColor, 0.96);
     }
 
+    static void DrawPointer(Graphics g, double pixel)
+    {
+        FillPixels(g, RimColor, pixel, [(-1, -2, 3), (-2, -1, 5), (-2, 0, 5), (-2, 1, 5), (-1, 2, 3)]);
+        FillPixels(g, GoldColor, pixel, [(0, -1, 1), (-1, 0, 3), (0, 1, 1)]);
+    }
+
+    static void FillPixels(Graphics g, int color, double pixel, (int X, int Y, int Width)[] runs)
+    {
+        var c = color;
+        var a = 1.0;
+        g.beginFill(Ref<int>.From(ref c), Ref<double>.From(ref a));
+        foreach (var run in runs)
+            g.drawRect((run.X - 0.5) * pixel, (run.Y - 0.5) * pixel, run.Width * pixel, pixel);
+        g.endFill();
+    }
+
     static void FillCircle(Graphics g, double radius, int color, double alpha)
     {
         var c = color;
@@ -327,6 +370,7 @@ internal sealed class EmoteWheel
  *  (addVertex ×4 + flush), зазор между секторами постоянной ширины через asin(gap/2r).
  *  Иконка — дочерний Graphics сектора. Наведение перерисовывает только старый и новый сектор:
  *  золотая кромка, выдвиг наружу, иконка ×1.25, сектор поднимается наверх списка детей.
- *  В центре диск с названием эмоции. Открытие 120 мс: масштаб 0.85 → 1 и альфа 0 → 1.
+ *  В центре диск с названием эмоции и пиксельный ромб-указатель мыши (SetPointer, −1..1 → 72% диска).
+ *  Открытие 120 мс: масштаб 0.85 → 1 и альфа 0 → 1.
  * ═══════════════════════════════════════
 */

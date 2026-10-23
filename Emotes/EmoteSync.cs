@@ -37,11 +37,12 @@ internal static class EmoteSync
 
     const double StickDeadZone = 0.5;
     const double StickCalibrationMin = 0.3;
-    const double MouseDeadZonePx = 24.0;
+    const double MouseRadiusPx = 90.0;
+    const double MouseDeadZonePx = 26.0;
     const double MouseMoveEpsilonPx = 1.5;
     const double MoveCancelSpeed = 0.05;
     const long EmoteCooldownMs = 350;
-    const long OnceTimeoutMs = 8000;
+    const long OnceTimeoutMs = 15_000;
     const long RemoteTimeoutMs = 120_000;
     const int LocalBubbleKey = 0;
 
@@ -71,8 +72,8 @@ internal static class EmoteSync
     static ControllerAccess? _lockedAccess;
     static bool _keyWasDown;
     static bool _padWasDown;
-    static double _anchorX;
-    static double _anchorY;
+    static double _pointerX;
+    static double _pointerY;
     static double _lastMouseX;
     static double _lastMouseY;
     static InputSource _source;
@@ -149,7 +150,7 @@ internal static class EmoteSync
         if (ghost != null)
         {
             if (message.Animate)
-                remote.Animated = PlayEmoteAnim(ghost.spr, def, true);
+                remote.Animated = PlayEmoteAnim(ghost.spr, def);
             EmoteBubbles.Show(id, ghost, def.Icon);
         }
 
@@ -234,6 +235,9 @@ internal static class EmoteSync
             if (game == null || game.destroyed || game.paused || game.hasCinematic())
                 return false;
 
+            if (!EmoteMouse.IsGameForeground())
+                return false;
+
             var access = _lockedAccess;
             var controller = access?.parent;
             if (access == null || controller == null || controller.isLocked)
@@ -268,9 +272,10 @@ internal static class EmoteSync
         _source = InputSource.None;
         _keysArmed = !AnyDirectionKeyDown();
         _leftStickArmed = !IsLeftStickActive(access.parent);
-        ReadMouse(out _anchorX, out _anchorY);
-        _lastMouseX = _anchorX;
-        _lastMouseY = _anchorY;
+        _pointerX = 0.0;
+        _pointerY = 0.0;
+        ReadMouse(out _lastMouseX, out _lastMouseY);
+        EmoteMouse.Capture();
     }
 
     static void CloseWheel(bool fire)
@@ -281,6 +286,7 @@ internal static class EmoteSync
         _wheelHero = null;
         var slot = wheel?.Hovered ?? -1;
         wheel?.Dispose();
+        EmoteMouse.Release();
 
         var access = _lockedAccess;
         _lockedAccess = null;
@@ -311,6 +317,7 @@ internal static class EmoteSync
         if (wheel == null)
             return;
 
+        var mouseMoved = ReadMouseDelta(out var mouseDx, out var mouseDy);
         var slot = wheel.Hovered;
         if (controller != null && TryReadSticks(controller, out var sx, out var sy))
         {
@@ -322,22 +329,25 @@ internal static class EmoteSync
             _source = InputSource.Keys;
             slot = EmoteWheel.SlotFromVector(kx, ky);
         }
-        else if (ReadMouse(out var mx, out var my))
+        else if (mouseMoved)
         {
-            var moved = System.Math.Abs(mx - _lastMouseX) + System.Math.Abs(my - _lastMouseY) > MouseMoveEpsilonPx;
-            _lastMouseX = mx;
-            _lastMouseY = my;
-            if (moved)
-                _source = InputSource.Mouse;
-            if (_source == InputSource.Mouse)
+            if (_source != InputSource.Mouse)
             {
-                var dx = mx - _anchorX;
-                var dy = my - _anchorY;
-                slot = dx * dx + dy * dy < MouseDeadZonePx * MouseDeadZonePx
-                    ? -1
-                    : EmoteWheel.SlotFromVector(dx, dy);
+                _pointerX = 0.0;
+                _pointerY = 0.0;
             }
+            _source = InputSource.Mouse;
+            MovePointer(mouseDx, mouseDy);
         }
+
+        var mouseActive = _source == InputSource.Mouse;
+        if (mouseActive)
+        {
+            slot = _pointerX * _pointerX + _pointerY * _pointerY < MouseDeadZonePx * MouseDeadZonePx
+                ? -1
+                : EmoteWheel.SlotFromVector(_pointerX, _pointerY);
+        }
+        wheel.SetPointer(mouseActive, _pointerX / MouseRadiusPx, _pointerY / MouseRadiusPx);
 
         if (slot == wheel.Hovered)
             return;
@@ -345,6 +355,34 @@ internal static class EmoteSync
         wheel.SetHovered(slot);
         if (slot >= 0)
             PlayUiSound(HoverSound, 0.35);
+    }
+
+    static void MovePointer(double dx, double dy)
+    {
+        _pointerX += dx;
+        _pointerY += dy;
+        var length = System.Math.Sqrt(_pointerX * _pointerX + _pointerY * _pointerY);
+        if (length <= MouseRadiusPx)
+            return;
+        var k = MouseRadiusPx / length;
+        _pointerX *= k;
+        _pointerY *= k;
+    }
+
+    static bool ReadMouseDelta(out double dx, out double dy)
+    {
+        if (EmoteMouse.IsCaptured)
+            return EmoteMouse.ReadDelta(out dx, out dy) && (dx != 0.0 || dy != 0.0);
+
+        dx = 0.0;
+        dy = 0.0;
+        if (!ReadMouse(out var x, out var y))
+            return false;
+        dx = x - _lastMouseX;
+        dy = y - _lastMouseY;
+        _lastMouseX = x;
+        _lastMouseY = y;
+        return System.Math.Abs(dx) + System.Math.Abs(dy) > MouseMoveEpsilonPx;
     }
 
     static void Fire(Hero hero, EmoteDef def)
@@ -363,7 +401,7 @@ internal static class EmoteSync
         _activeHero = hero;
         _activeStartedAt = now;
 
-        var animated = CanAnimate(hero, def) && PlayEmoteAnim(hero.spr, def, false);
+        var animated = CanAnimate(hero, def) && PlayEmoteAnim(hero.spr, def);
         if (!animated)
         {
             _active = null;
@@ -389,9 +427,9 @@ internal static class EmoteSync
             if (group != null && ModEntry.IsHeroAttackAnim(group))
                 return false;
 
-            foreach (var anim in def.Anims)
+            foreach (var step in def.Steps)
             {
-                if (!HasGroup(spr, anim))
+                if (!HasGroup(spr, step.Group))
                     return false;
             }
             return true;
@@ -402,37 +440,29 @@ internal static class EmoteSync
         }
     }
 
-    static bool PlayEmoteAnim(HSprite? spr, EmoteDef def, bool holdOnce)
+    static bool PlayEmoteAnim(HSprite? spr, EmoteDef def)
     {
         try
         {
             var anim = spr?._animManager;
-            if (spr == null || anim == null || def.Anims.Length == 0)
+            if (spr == null || anim == null || def.Steps.Length == 0)
                 return false;
-            foreach (var name in def.Anims)
+            foreach (var step in def.Steps)
             {
-                if (!HasGroup(spr, name))
+                if (!HasGroup(spr, step.Group))
                     return false;
             }
 
-            var first = def.Anims[0].AsHaxeString();
-            switch (def.Playback)
+            for (var i = 0; i < def.Steps.Length; i++)
             {
-                case EmotePlayback.Hold:
-                    anim.play(first, null, null).stopOnLastFrame(Ref<bool>.Null);
-                    break;
-                case EmotePlayback.Loop when def.Anims.Length > 1:
-                    anim.play(first, null, null);
-                    anim.play(def.Anims[^1].AsHaxeString(), null, true).loop(null);
-                    break;
-                case EmotePlayback.Loop:
-                    anim.play(first, null, null).loop(null);
-                    break;
-                default:
-                    var played = anim.play(first, null, null);
-                    if (holdOnce)
-                        played.stopOnLastFrame(Ref<bool>.Null);
-                    break;
+                var step = def.Steps[i];
+                var played = anim.play(step.Group.AsHaxeString(), step.Plays > 0 ? step.Plays : 1, i == 0 ? null : true);
+                if (step.Reverse)
+                    played.reverse();
+                if (step.Plays == EmoteStep.LoopForever)
+                    played.loop(null);
+                else if (step.Plays == EmoteStep.HoldLastFrame)
+                    played.pauseOnLastFrame();
             }
             return true;
         }
@@ -461,7 +491,7 @@ internal static class EmoteSync
             var group = hero.spr.groupName?.ToString();
             var inEmote = group != null && def.UsesAnim(group);
             var moving = System.Math.Abs(hero.dx) > MoveCancelSpeed || System.Math.Abs(hero.dy) > MoveCancelSpeed;
-            var timedOut = def.Playback == EmotePlayback.Once && now - _activeStartedAt > OnceTimeoutMs;
+            var timedOut = def.EndsOnItsOwn && now - _activeStartedAt > OnceTimeoutMs;
 
             if (!inEmote)
                 EndLocal(true, false);
@@ -507,7 +537,7 @@ internal static class EmoteSync
         {
             var remote = pair.Value;
             var ghostGone = remote.Ghost != null && SafeRead(() => remote.Ghost.destroyed, true);
-            var limit = remote.Def.Playback == EmotePlayback.Once ? OnceTimeoutMs : RemoteTimeoutMs;
+            var limit = remote.Def.EndsOnItsOwn ? OnceTimeoutMs : RemoteTimeoutMs;
             if (ghostGone || now - remote.StartedAt > limit)
                 _scratchIds.Add(pair.Key);
         }
@@ -724,16 +754,20 @@ internal static class EmoteSync
  * ═══════════════════════════════════════
  *  Колесо: держать T (клавиатура) или L3 (PadKey 10), отпустил — сработала наведённая эмоция.
  *  Открывается только в сетевой сессии, у живого героя, без паузы, катсцены, текстового ввода
- *  и чужого exclusive. Пока открыто — hero.controller.manualLock = true, при любом закрытии
+ *  и чужого exclusive; закрывается без эмоции, если что-то из этого нарушилось или игра
+ *  потеряла фокус. Пока открыто — hero.controller.manualLock = true, при любом закрытии
  *  снимается (катсцены игры этот лок не используют, застрявший герой хуже).
  *  Наведение: стик (правый сразу, левый — после возврата в центр) → стрелки/WASD (после
- *  отпускания зажатых при открытии) → мышь (смещение от точки открытия, центр 24 px = ничего).
+ *  отпускания зажатых при открытии) → мышь. Мышь — виртуальный указатель: дельта за кадр
+ *  (EmoteMouse держит курсор в центре окна), сумма ограничена кругом 90 px, ближе 26 px к центру
+ *  = ничего. Указатель рисуется ромбом в центре колеса.
  *  Знак оси Y стика калибруется по тоглу PadKey «вверх» (21/27), без осей — цифровые тоглы.
- *  Своя эмоция: анимация только если герой стоит и не атакует, иначе только значок.
- *  ANIM для анимаций активной эмоции не шлётся (SuppressesHeroAnim). Конец — анимация
- *  сменилась, герой сдвинулся (тогда stopWithStateAnims) или Once дольше 8 с → EMOTE стоп.
- *  Чужая эмоция: та же анимация на призраке (Once замирает на последнем кадре),
- *  на стоп — RestoreGhostBodyAnim, если призрак всё ещё в анимации эмоции.
+ *  Своя эмоция: цепочка шагов EmoteDef.Steps, анимация только если герой стоит и не атакует,
+ *  иначе только значок. ANIM для групп активной эмоции не шлётся (SuppressesHeroAnim).
+ *  Конец: группа сменилась (цепочка доиграла или игра перебила), герой сдвинулся
+ *  (stopWithStateAnims) или конечная цепочка идёт дольше 15 с → EMOTE стоп.
+ *  Чужая эмоция: та же цепочка на призраке, на стоп — RestoreGhostBodyAnim, если призрак
+ *  всё ещё в группе эмоции.
  *  Пузырь над головой — EmoteBubbles, ключ 0 = свой герой, иначе id игрока.
  * ═══════════════════════════════════════
 */

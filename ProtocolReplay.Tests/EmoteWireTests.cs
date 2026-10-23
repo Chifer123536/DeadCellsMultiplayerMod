@@ -68,10 +68,25 @@ public sealed class EmoteWireTests
             var def = EmoteCatalog.All[i];
             Assert.Equal(i, def.Id);
             Assert.True(EmoteWire.IsValidEmoteId(def.Id));
-            Assert.NotEmpty(def.Anims);
+            Assert.NotEmpty(def.Steps);
             Assert.Equal(EmoteIcons.Size, def.Icon.Length);
             Assert.All(def.Icon, row => Assert.Equal(EmoteIcons.Size, row.Length));
         }
+    }
+
+    [Fact]
+    public void OnlyLastStepMayLoopOrHold()
+    {
+        foreach (var def in EmoteCatalog.All)
+        {
+            for (var i = 0; i < def.Steps.Length - 1; i++)
+                Assert.True(def.Steps[i].Plays > 0, $"{def.Label}: step {i} never ends, later steps are unreachable");
+        }
+
+        Assert.False(EmoteCatalog.Get(0)!.EndsOnItsOwn);
+        Assert.False(EmoteCatalog.Get(4)!.EndsOnItsOwn);
+        Assert.False(EmoteCatalog.Get(5)!.EndsOnItsOwn);
+        Assert.True(EmoteCatalog.Get(3)!.EndsOnItsOwn);
     }
 
     [Theory]
