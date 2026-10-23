@@ -1343,6 +1343,7 @@ public class LevelExitSync :
         {
             existing.Door = target;
             existing.DoorKey = key;
+            PlaceDoorCounter(existing);
             return existing;
         }
 
@@ -1374,13 +1375,16 @@ public class LevelExitSync :
 
                 var expected = net != null && net.IsAlive ? _cachedExpectedPlayerCount : System.Math.Max(1, _activePlayerIds.Count);
                 var initialLabel = BuildCounterLabel(0, expected);
-                visual.Counter = Assets.Class.makeText(initialLabel.AsHaxeString(), dc.ui.Text.Class.COLORS.get("WO".AsHaxeString()), false, parent);
+                var scroller = SafeRead(() => target._level?.scroller, null);
+                visual.Counter = Assets.Class.makeText(initialLabel.AsHaxeString(), dc.ui.Text.Class.COLORS.get("WO".AsHaxeString()), false, scroller == null ? parent : null);
+                if (scroller != null)
+                    scroller.addChildAt(visual.Counter, Const.Class.DP_CTX_UI);
                 visual.Counter.customScale = CounterScale;
                 visual.Counter.onResize();
                 visual.Counter.textColor = CounterColor;
                 visual.Counter.alpha = 1.0;
-                visual.Counter.y = -ExitCounterYOffsetPx;
                 visual.Counter.visible = true;
+                PlaceDoorCounter(visual);
             }
             catch
             {
@@ -1451,11 +1455,64 @@ public class LevelExitSync :
             visual.LastReadyCount = ready;
             visual.LastExpectedCount = expected;
             visual.LastTextWidth = SafeRead(() => counter.textWidth, label.Length * 10);
-            var textWidth = visual.LastTextWidth > 0 ? visual.LastTextWidth : label.Length * 10;
-            counter.x = -(textWidth * counter.scaleX) * 0.5;
+            PlaceDoorCounter(visual);
         }
 
-        counter.visible = true;
+        counter.visible = SafeRead(() => visual.Door?.spr?.visible ?? true, true);
+    }
+
+    static dc.h2d.col.Point? _counterPoint;
+
+    static void PlaceDoorCounter(DoorVisual visual)
+    {
+        var counter = visual.Counter;
+        var spr = visual.Door?.spr;
+        if (counter == null || spr == null)
+            return;
+
+        try
+        {
+            var textWidth = visual.LastTextWidth > 0
+                ? visual.LastTextWidth
+                : SafeRead(() => counter.textWidth, 0);
+            var halfWidth = textWidth * System.Math.Abs(counter.scaleX) * 0.5;
+
+            double baseX = 0.0;
+            double baseY = 0.0;
+            var counterParent = counter.parent;
+            if (counterParent != null && !ReferenceEquals(counterParent, spr))
+            {
+                if (ReferenceEquals(spr.parent, counterParent))
+                {
+                    baseX = spr.x;
+                    baseY = spr.y;
+                }
+                else
+                {
+                    _counterPoint ??= CreatePoint();
+                    _counterPoint.x = 0.0;
+                    _counterPoint.y = 0.0;
+                    spr.localToGlobal(_counterPoint);
+                    counterParent.globalToLocal(_counterPoint);
+                    baseX = _counterPoint.x;
+                    baseY = _counterPoint.y;
+                }
+            }
+
+            counter.x = baseX - halfWidth;
+            counter.y = baseY - ExitCounterYOffsetPx;
+            counter.posChanged = true;
+        }
+        catch
+        {
+        }
+    }
+
+    static dc.h2d.col.Point CreatePoint()
+    {
+        var x = 0.0;
+        var y = 0.0;
+        return new dc.h2d.col.Point(Ref<double>.From(ref x), Ref<double>.From(ref y));
     }
 
     private static string BuildCounterLabel(int ready, int expected)
