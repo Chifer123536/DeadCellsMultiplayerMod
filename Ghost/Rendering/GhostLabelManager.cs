@@ -3,22 +3,17 @@ using DeadCellsMultiplayerMod.Core.Abstractions;
 using DeadCellsMultiplayerMod.Core.Models;
 using HaxeProxy.Runtime;
 using ModCore.Utilities;
-using dc.libs.heaps.slib;
 
 namespace DeadCellsMultiplayerMod.Ghost.Rendering;
 
-/// <summary>
-/// Manages nickname labels for ghost entities.
-/// </summary>
 public sealed class GhostLabelManager : IGhostRenderer
 {
-    private readonly Dictionary<dc.Entity, GhostLabelState> _labels = new();
-    private readonly List<dc.Entity> _staleLabels = new();
-    private readonly IDisplayScaleProvider _scaleProvider;
+    readonly Dictionary<dc.Entity, GhostLabelState> _labels = new();
+    readonly List<dc.Entity> _staleLabels = new();
+    readonly IDisplayScaleProvider _scaleProvider;
 
-    private const double LabelYOffset = -80.0;
-    private const double LabelXOffsetPerChar = 2.5;
-    private const double LabelAlpha = 0.8;
+    const double LabelYOffset = -80.0;
+    const double LabelAlpha = 0.8;
 
     public GhostLabelManager(IDisplayScaleProvider scaleProvider)
     {
@@ -50,23 +45,22 @@ public sealed class GhostLabelManager : IGhostRenderer
     {
         if (_labels.Count == 0) return;
 
-        var targetScale = _scaleProvider.GetNicknameScale();
+        var layout = ReadLayout();
         _staleLabels.Clear();
 
         foreach (var pair in _labels)
         {
             var entity = pair.Key;
             var state = pair.Value;
-            var label = state.Label;
 
-            if (!IsValidLabel(entity, label))
+            if (!IsValidLabel(entity, state.Label))
             {
                 if (entity != null)
                     _staleLabels.Add(entity);
                 continue;
             }
 
-            UpdateLabelPosition(entity, state, label, targetScale);
+            ApplyLayout(entity, state, layout);
         }
 
         CleanupStaleLabels();
@@ -82,50 +76,64 @@ public sealed class GhostLabelManager : IGhostRenderer
         }
     }
 
-    private void CreateLabel(dc.Entity entity, string text)
+    void CreateLabel(dc.Entity entity, string text)
     {
         try
         {
             var nicknameColor = dc.ui.Text.Class.COLORS.get("ST".AsHaxeString());
             var label = Assets.Class.makeText(text.AsHaxeString(), nicknameColor, null, entity.spr);
-            var targetScale = _scaleProvider.GetNicknameScale();
-
-            label.y = LabelYOffset;
-            label.x = -LabelXOffsetPerChar * text.Length;
             label.alpha = LabelAlpha;
-            label.customScale = targetScale;
-            label.onResize();
-            label.textColor = nicknameColor;
 
-            _labels[entity] = new GhostLabelState(label, text);
+            var state = new GhostLabelState(label, text);
+            _labels[entity] = state;
+
+            ApplyLayout(entity, state, ReadLayout());
+            label.textColor = nicknameColor;
         }
         catch
         {
-            // Label creation failed
         }
     }
 
-    private void UpdateLabelPosition(dc.Entity entity, GhostLabelState state, dc.ui.Text label, double targetScale)
+    GhostLabelLayout ReadLayout()
     {
-        var targetX = -LabelXOffsetPerChar * state.TextLength;
+        var scale = _scaleProvider.GetNicknameScale();
 
-        label.customScale = targetScale;
-        label.onResize();
-
-        if (entity.dir < 0)
+        try
         {
-            label.scaleX = -label.scaleX;
-            label.x = -targetX;
+            var win = dc.hxd.Window.Class.getInstance();
+            if (win != null)
+                return new GhostLabelLayout(scale, win.get_width(), win.get_height());
         }
-        else
+        catch
         {
-            label.x = targetX;
         }
 
-        label.y = LabelYOffset;
+        return new GhostLabelLayout(scale, 0, 0);
     }
 
-    private static bool IsValidLabel(dc.Entity? entity, dc.ui.Text? label)
+    static void ApplyLayout(dc.Entity entity, GhostLabelState state, GhostLabelLayout layout)
+    {
+        var label = state.Label;
+
+        if (state.AppliedLayout != layout)
+        {
+            label.customScale = layout.Scale;
+            label.onResize();
+            state.AppliedLayout = layout;
+        }
+
+        var scale = System.Math.Abs(label.scaleY);
+        var halfWidth = label.get_textWidth() * scale * 0.5;
+        var dir = entity.dir < 0 ? -1.0 : 1.0;
+
+        label.scaleX = scale * dir;
+        label.x = -halfWidth * dir;
+        label.y = LabelYOffset;
+        label.posChanged = true;
+    }
+
+    static bool IsValidLabel(dc.Entity? entity, dc.ui.Text? label)
     {
         return entity != null &&
                label != null &&
@@ -133,8 +141,20 @@ public sealed class GhostLabelManager : IGhostRenderer
                label.parent != null;
     }
 
-    private static string NormalizeText(string? text)
+    static string NormalizeText(string? text)
     {
         return string.IsNullOrWhiteSpace(text) ? "Guest" : text;
     }
 }
+
+/*
+ * ═══════════════════════════════════════
+ *  GHOST LABEL MANAGER
+ * ═══════════════════════════════════════
+ *  Ник — дочерний dc.ui.Text на entity.spr, координаты в локальных единицах спрайта.
+ *  Центр: x = -textWidth * scale / 2 (реальная ширина глифов, не оценка по символам).
+ *  dir < 0: спрайт зеркален → scaleX текста и x тоже зеркалятся, текст читается слева направо.
+ *  onResize (смена шрифта + пересборка глифов) только при смене scale или размера окна.
+ *  posChanged = true вручную: прямая запись x/scaleX в Haxe-поле не помечает матрицу грязной.
+ * ═══════════════════════════════════════
+*/
