@@ -719,12 +719,24 @@ namespace DeadCellsMultiplayerMod
                 if (!ulong.TryParse(hostSteamIdRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var hostSteamId))
                     hostSteamId = 0UL;
 
-                SteamConnect.PrepareSteamNativePathForRuntime();
+                var nativeLibrary = SteamConnect.PrepareSteamNativeLibraryForWorker();
                 // This process is intentionally spawned by the already-running modded game. Calling
                 // RestartAppIfNecessary here can terminate the worker before it writes its ready
                 // event, producing the misleading "empty startup event" error.
-                if (!SteamAPI.Init())
-                    throw new InvalidOperationException("Steam API init failed in Steam P2P worker");
+                bool steamInitialized;
+                try
+                {
+                    steamInitialized = SteamAPI.Init();
+                }
+                catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+                {
+                    throw new InvalidOperationException(
+                        $"Steam P2P worker could not load the Steam API ({nativeLibrary}): {ex.GetType().Name}: {ex.Message}",
+                        ex);
+                }
+
+                if (!steamInitialized)
+                    throw new InvalidOperationException($"Steam API init failed in Steam P2P worker ({nativeLibrary})");
 
                 var sessionFailQueue = new ConcurrentQueue<WorkerEvent>();
                 using var p2pFailCallback = Callback<P2PSessionConnectFail_t>.Create(data =>

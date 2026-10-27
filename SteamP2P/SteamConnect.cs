@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using ModCore.Utilities;
@@ -25,6 +26,10 @@ namespace DeadCellsMultiplayerMod
         private const int SteamCallTimeoutMs = 15000;
         private const int JoinWorkerRetryCount = 3;
         private const int JoinWorkerRetryDelayMs = 400;
+        private const int InProcessCallTimeoutMs = 10000;
+        private const int InProcessMetadataTimeoutMs = 4000;
+        private const int InProcessPollIntervalMs = 25;
+        private const string SteamApiRequiredExport = "SteamAPI_ISteamClient_GetISteamGameSearch";
         private const string HostIpLobbyKey = "dccm_host_ip";
         private const string HostPortLobbyKey = "dccm_host_port";
         private const string ModMarkerLobbyKey = "dccm_mod";
@@ -39,6 +44,7 @@ namespace DeadCellsMultiplayerMod
 
         private const string EnvRequestPath = "DCCM_STEAM_CONNECT_REQUEST_PATH";
         private const string EnvResponsePath = "DCCM_STEAM_CONNECT_RESPONSE_PATH";
+        private const string EnvSteamApiDir = "DCCM_STEAM_API_DIR";
 
         private static readonly object HostWorkerSync = new();
         private static Process? _hostWorkerProcess;
@@ -89,6 +95,12 @@ namespace DeadCellsMultiplayerMod
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool FreeLibrary(IntPtr hModule);
 
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetModuleFileName(IntPtr hModule, StringBuilder lpFilename, uint nSize);
+
         internal sealed class HostLobbyResult
         {
             public bool Success { get; init; }
@@ -98,6 +110,35 @@ namespace DeadCellsMultiplayerMod
             public string PersonaName { get; init; } = string.Empty;
             public SteamLobbyVisibility Visibility { get; init; } = SteamLobbyVisibility.FriendsOnly;
             public string Error { get; init; } = string.Empty;
+            // Non-fatal: Steam rejected one or more lobby setters after the lobby was created.
+            public string Warning { get; init; } = string.Empty;
+        }
+
+        private enum InProcessOutcome
+        {
+            Success,
+            // Steam answered definitively (lobby missing, refused, incompatible); the helper
+            // process would get the same answer, so it is not tried.
+            Failed,
+            // The in-process path could not run (SteamAPI not initialized, no callback pump,
+            // exception); the helper process is tried as a fallback.
+            Unavailable
+        }
+
+        private sealed class InProcessCallWait<T> where T : struct
+        {
+            private int _completed;
+
+            public T Data { get; private set; }
+            public bool IoFailure { get; private set; }
+            public bool Completed => Volatile.Read(ref _completed) != 0;
+
+            public void Complete(T data, bool ioFailure)
+            {
+                Data = data;
+                IoFailure = ioFailure;
+                Volatile.Write(ref _completed, 1);
+            }
         }
 
         internal sealed class JoinLobbyResult
@@ -245,101 +286,457 @@ namespace DeadCellsMultiplayerMod
 
         internal static bool TryResolveJoinEndpointFromClipboard(out JoinLobbyResult result)
         {
-            result = new JoinLobbyResult
-            {
-                Success = false,
-                Error = "Clipboard does not contain a valid Steam lobby id"
-            };
-
             var clipboardText = TryGetClipboardText();
             if (!TryParseLobbyInput(clipboardText, out var lobbyId, out var lobbyCode))
-                return false;
-
-            var request = new WorkerRequest
             {
-                Mode = "join",
-                LobbyId = lobbyId,
-                LobbyCode = lobbyCode
-            };
-
-            var workerSucceeded = TryRunWorker(request, out var response);
-            if (!workerSucceeded && IsTransientJoinWorkerError(response.Error))
-            {
-                for (var attempt = 0; attempt < JoinWorkerRetryCount; attempt++)
-                {
-                    Thread.Sleep(JoinWorkerRetryDelayMs);
-                    workerSucceeded = TryRunWorker(request, out response);
-                    if (workerSucceeded || !IsTransientJoinWorkerError(response.Error))
-                        break;
-                }
-            }
-
-            if (!workerSucceeded)
-            {
-                result = new JoinLobbyResult
-                {
-                    Success = false,
-                    LobbyId = lobbyId,
-                    HostSteamId = response.HostSteamId,
-                    PersonaName = response.PersonaName ?? string.Empty,
-                    Error = string.IsNullOrWhiteSpace(response.Error)
-                        ? "Steam worker process failed"
-                        : response.Error
-                };
+                result = FailedJoin(0UL, "Clipboard does not contain a valid Steam lobby id or code");
+                ModEntry.Instance?.Logger?.Warning("[NetMod][Steam] Clipboard join failed: {Error}", result.Error);
                 return false;
             }
 
-            IPEndPoint? endpoint = null;
-            if (IPAddress.TryParse(response.HostIp, out var hostIp))
-                endpoint = new IPEndPoint(hostIp, NormalizePort(response.HostPort));
-
-            if (endpoint == null && response.HostSteamId == 0UL)
-            {
-                result = new JoinLobbyResult
-                {
-                    Success = false,
-                    LobbyId = response.LobbyId,
-                    HostSteamId = response.HostSteamId,
-                    PersonaName = response.PersonaName ?? string.Empty,
-                    Error = "Lobby host IP is invalid"
-                };
-                return false;
-            }
-
-            result = new JoinLobbyResult
-            {
-                Success = true,
-                LobbyId = response.LobbyId,
-                HostSteamId = response.HostSteamId,
-                PersonaName = response.PersonaName ?? string.Empty,
-                Endpoint = endpoint,
-                Error = string.Empty
-            };
-
-            return true;
+            return TryResolveJoinEndpoint(lobbyId, lobbyCode, "clipboard", out result);
         }
 
         internal static bool TryResolveJoinEndpointFromLobbyId(ulong lobbyId, out JoinLobbyResult result)
         {
             ModEntry.Instance?.Logger?.Information("[NetMod][Steam] TryResolveJoinEndpointFromLobbyId start: lobbyId={LobbyId}", lobbyId);
 
-            result = new JoinLobbyResult
-            {
-                Success = false,
-                Error = "Steam lobby id is invalid"
-            };
-
             if (lobbyId == 0UL)
             {
+                result = FailedJoin(0UL, "Steam lobby id is invalid");
                 ModEntry.Instance?.Logger?.Warning("[NetMod][Steam] TryResolveJoinEndpointFromLobbyId failed: invalid lobbyId");
                 return false;
             }
 
+            if (!TryResolveJoinEndpoint(lobbyId, string.Empty, "lobbyId", out result))
+            {
+                ModEntry.Instance?.Logger?.Warning("[NetMod][Steam] TryResolveJoinEndpointFromLobbyId failed: lobbyId={LobbyId} error={Error}", lobbyId, result.Error);
+                return false;
+            }
+
+            ModEntry.Instance?.Logger?.Information("[NetMod][Steam] TryResolveJoinEndpointFromLobbyId success: lobbyId={LobbyId} hostSteamId={HostSteamId}", result.LobbyId, result.HostSteamId);
+            return true;
+        }
+
+        private static JoinLobbyResult FailedJoin(ulong lobbyId, string error) => new()
+        {
+            Success = false,
+            LobbyId = lobbyId,
+            Error = string.IsNullOrWhiteSpace(error) ? "Steam lobby resolve failed" : error
+        };
+
+        // The game process already owns an initialized SteamAPI whose callbacks are pumped by the
+        // main-thread hooks, so the lobby is resolved there. The helper process is only a fallback
+        // when that path cannot run at all: it must find steam_api64.dll on its own, which fails on
+        // some installs (DllNotFoundException), so it is never the primary path.
+        private static bool TryResolveJoinEndpoint(ulong lobbyId, string lobbyCode, string source, out JoinLobbyResult result)
+        {
+            var log = ModEntry.Instance?.Logger;
+            var outcome = TryResolveJoinInProcess(lobbyId, lobbyCode, out result);
+            if (outcome == InProcessOutcome.Success)
+            {
+                log?.Information(
+                    "[NetMod][Steam] Lobby resolved in-process: lobbyId={LobbyId} hostSteamId={HostSteamId} endpoint={Endpoint} source={Source}",
+                    result.LobbyId,
+                    result.HostSteamId,
+                    result.Endpoint?.ToString() ?? "(P2P only)",
+                    source);
+                return true;
+            }
+
+            if (outcome == InProcessOutcome.Failed)
+            {
+                log?.Warning(
+                    "[NetMod][Steam] Lobby resolve failed in-process: lobbyId={LobbyId} code={LobbyCode} source={Source} error={Error}",
+                    lobbyId,
+                    lobbyCode,
+                    source,
+                    result.Error);
+                return false;
+            }
+
+            log?.Warning(
+                "[NetMod][Steam] In-process lobby resolve unavailable ({Reason}); falling back to Steam helper process: lobbyId={LobbyId} code={LobbyCode} source={Source}",
+                result.Error,
+                lobbyId,
+                lobbyCode,
+                source);
+
+            if (!TryResolveJoinViaHelperProcess(lobbyId, lobbyCode, out result))
+            {
+                log?.Warning(
+                    "[NetMod][Steam] Steam helper process lobby resolve failed: lobbyId={LobbyId} code={LobbyCode} source={Source} error={Error}",
+                    lobbyId,
+                    lobbyCode,
+                    source,
+                    result.Error);
+                return false;
+            }
+
+            log?.Information(
+                "[NetMod][Steam] Lobby resolved by Steam helper process: lobbyId={LobbyId} hostSteamId={HostSteamId} source={Source}",
+                result.LobbyId,
+                result.HostSteamId,
+                source);
+            return true;
+        }
+
+        private static InProcessOutcome TryResolveJoinInProcess(ulong lobbyId, string lobbyCode, out JoinLobbyResult result)
+        {
+            try
+            {
+                if (!ModEntry.EnsureSteamApiForNetworking("Steam lobby resolve"))
+                {
+                    result = FailedJoin(lobbyId, "SteamAPI is not initialized in the game process");
+                    return InProcessOutcome.Unavailable;
+                }
+
+                var targetLobbyId = lobbyId;
+                var normalizedCode = NormalizeLobbyCode(lobbyCode);
+                if (!string.IsNullOrWhiteSpace(normalizedCode))
+                {
+                    var lookup = TryResolveLobbyIdByCodeInProcess(normalizedCode, out var resolvedLobbyId, out var codeError);
+                    if (lookup == InProcessOutcome.Success)
+                    {
+                        targetLobbyId = resolvedLobbyId;
+                    }
+                    else if (targetLobbyId == 0UL)
+                    {
+                        result = FailedJoin(0UL, codeError);
+                        return lookup;
+                    }
+                    else
+                    {
+                        ModEntry.Instance?.Logger?.Warning(
+                            "[NetMod][Steam] Lobby code {LobbyCode} lookup failed ({Error}); using lobbyId={LobbyId}",
+                            normalizedCode,
+                            codeError,
+                            targetLobbyId);
+                    }
+                }
+
+                if (targetLobbyId == 0UL)
+                {
+                    result = FailedJoin(0UL, "Steam lobby id is invalid");
+                    return InProcessOutcome.Failed;
+                }
+
+                return TryEnterLobbyInProcess(targetLobbyId, out result);
+            }
+            catch (Exception ex)
+            {
+                result = FailedJoin(lobbyId, $"in-process resolve threw {ex.GetType().Name}: {ex.Message}");
+                return InProcessOutcome.Unavailable;
+            }
+        }
+
+        private static InProcessOutcome TryEnterLobbyInProcess(ulong lobbyId, out JoinLobbyResult result)
+        {
+            var lobby = new CSteamID(lobbyId);
+            var localSteamId = ModEntry.RunSteamNetworkingSerialized(() => SteamUser.GetSteamID().m_SteamID);
+            var ownerBeforeJoin = ModEntry.RunSteamNetworkingSerialized(() => SteamMatchmaking.GetLobbyOwner(lobby).m_SteamID);
+            if (localSteamId != 0UL && ownerBeforeJoin == localSteamId)
+            {
+                result = FailedJoin(lobbyId, "Cannot join your own Steam lobby");
+                return InProcessOutcome.Failed;
+            }
+
+            // Already a member (repeated invite click, friend-list join): a failure must not leave.
+            var leaveOnFailure = !ModEntry.RunSteamNetworkingSerialized(() => IsLobbyMember(lobby, localSteamId));
+            var succeeded = false;
+            try
+            {
+                var enter = TryWaitForCallResultInProcess(
+                    () => SteamMatchmaking.JoinLobby(lobby),
+                    out LobbyEnter_t entered,
+                    out var ioFailure,
+                    out var waitError);
+                if (enter != InProcessOutcome.Success)
+                {
+                    result = FailedJoin(lobbyId, $"JoinLobby: {waitError}");
+                    return enter;
+                }
+
+                if (ioFailure)
+                {
+                    result = FailedJoin(lobbyId, "JoinLobby failed (Steam I/O failure)");
+                    return InProcessOutcome.Failed;
+                }
+
+                var response = (EChatRoomEnterResponse)entered.m_EChatRoomEnterResponse;
+                if (response != EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
+                {
+                    result = FailedJoin(lobbyId, DescribeLobbyEnterResponse(response));
+                    return InProcessOutcome.Failed;
+                }
+
+                var hostSteamId = 0UL;
+                var hostIp = string.Empty;
+                var hostPortRaw = string.Empty;
+                var compatError = string.Empty;
+                var metadataReady = false;
+                bool compatible;
+                var metadataDeadline = Environment.TickCount64 + InProcessMetadataTimeoutMs;
+                while (true)
+                {
+                    compatible = ModEntry.RunSteamNetworkingSerialized(() =>
+                    {
+                        hostSteamId = ReadLobbyHostSteamId(lobby);
+                        hostIp = SteamMatchmaking.GetLobbyData(lobby, HostIpLobbyKey) ?? string.Empty;
+                        hostPortRaw = SteamMatchmaking.GetLobbyData(lobby, HostPortLobbyKey) ?? string.Empty;
+                        return TryValidateLobbyCompatibility(lobby, out metadataReady, out compatError);
+                    });
+
+                    if (!compatible ||
+                        (metadataReady && hostSteamId != 0UL) ||
+                        Environment.TickCount64 >= metadataDeadline)
+                    {
+                        break;
+                    }
+
+                    Thread.Sleep(InProcessPollIntervalMs);
+                }
+
+                if (!compatible)
+                {
+                    result = FailedJoin(lobbyId, compatError);
+                    return InProcessOutcome.Failed;
+                }
+
+                if (!metadataReady)
+                {
+                    result = FailedJoin(lobbyId, "Steam lobby has no co-op metadata (not a DeadCellsMultiplayerMod lobby, or host data never arrived)");
+                    return InProcessOutcome.Failed;
+                }
+
+                IPEndPoint? endpoint = null;
+                if (IPAddress.TryParse(hostIp, out var parsedIp) &&
+                    int.TryParse(hostPortRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var hostPort))
+                {
+                    endpoint = new IPEndPoint(parsedIp, NormalizePort(hostPort));
+                }
+
+                if (hostSteamId == 0UL && endpoint == null)
+                {
+                    result = FailedJoin(lobbyId, "Steam lobby host data is unavailable");
+                    return InProcessOutcome.Failed;
+                }
+
+                if (localSteamId != 0UL && hostSteamId == localSteamId)
+                {
+                    leaveOnFailure = false;
+                    result = FailedJoin(lobbyId, "Cannot join your own Steam lobby");
+                    return InProcessOutcome.Failed;
+                }
+
+                result = new JoinLobbyResult
+                {
+                    Success = true,
+                    LobbyId = lobbyId,
+                    HostSteamId = hostSteamId,
+                    PersonaName = ModEntry.RunSteamNetworkingSerialized(SafeGetPersonaName),
+                    Endpoint = endpoint,
+                    Error = string.Empty
+                };
+                succeeded = true;
+                return InProcessOutcome.Success;
+            }
+            finally
+            {
+                if (!succeeded && leaveOnFailure)
+                    LeaveLobby(lobbyId);
+            }
+        }
+
+        private static InProcessOutcome TryResolveLobbyIdByCodeInProcess(string normalizedCode, out ulong lobbyId, out string error)
+        {
+            lobbyId = 0UL;
+            var list = TryWaitForCallResultInProcess(
+                () =>
+                {
+                    AddLobbyCodeListFilters(normalizedCode);
+                    return SteamMatchmaking.RequestLobbyList();
+                },
+                out LobbyMatchList_t matches,
+                out var ioFailure,
+                out var waitError);
+            if (list != InProcessOutcome.Success)
+            {
+                error = $"RequestLobbyList: {waitError}";
+                return list;
+            }
+
+            if (ioFailure)
+            {
+                error = "Steam lobby list request failed (I/O failure)";
+                return InProcessOutcome.Failed;
+            }
+
+            var found = ModEntry.RunSteamNetworkingSerialized(() => FindLobbyByCode(normalizedCode, (int)matches.m_nLobbiesMatching));
+            if (found == 0UL)
+            {
+                error = "Steam lobby code does not exist (only public lobbies can be found by code)";
+                return InProcessOutcome.Failed;
+            }
+
+            lobbyId = found;
+            error = string.Empty;
+            return InProcessOutcome.Success;
+        }
+
+        // Runs while the main-thread hooks pump SteamAPI.RunCallbacks under the same lock that
+        // RunSteamNetworkingSerialized takes. The CallResult is created, armed and disposed under
+        // that lock and this thread only sleeps between checks, so it never pumps callbacks itself.
+        // Must not be called on the game main thread: the pump could not run while it waits.
+        private static InProcessOutcome TryWaitForCallResultInProcess<T>(
+            Func<SteamAPICall_t> start,
+            out T data,
+            out bool ioFailure,
+            out string error)
+            where T : struct
+        {
+            data = default;
+            ioFailure = false;
+            error = string.Empty;
+
+            var wait = new InProcessCallWait<T>();
+            CallResult<T>? callResult = null;
+            try
+            {
+                var call = ModEntry.RunSteamNetworkingSerialized(() =>
+                {
+                    callResult = CallResult<T>.Create(wait.Complete);
+                    var handle = start();
+                    if (handle != SteamAPICall_t.Invalid)
+                        callResult.Set(handle);
+                    return handle;
+                });
+                if (call == SteamAPICall_t.Invalid)
+                {
+                    error = "Steam returned an invalid API call handle";
+                    return InProcessOutcome.Unavailable;
+                }
+
+                var deadline = Environment.TickCount64 + InProcessCallTimeoutMs;
+                while (!wait.Completed)
+                {
+                    if (Environment.TickCount64 >= deadline)
+                    {
+                        error = string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"{typeof(T).Name} did not arrive within {InProcessCallTimeoutMs} ms (game Steam callback pump idle)");
+                        return InProcessOutcome.Unavailable;
+                    }
+
+                    Thread.Sleep(InProcessPollIntervalMs);
+                }
+
+                data = wait.Data;
+                ioFailure = wait.IoFailure;
+                return InProcessOutcome.Success;
+            }
+            finally
+            {
+                var toDispose = callResult;
+                if (toDispose != null)
+                {
+                    try { ModEntry.RunSteamNetworkingSerialized(toDispose.Dispose); } catch { }
+                }
+            }
+        }
+
+        private static bool IsLobbyMember(CSteamID lobby, ulong steamId)
+        {
+            if (steamId == 0UL)
+                return false;
+
+            var count = SteamMatchmaking.GetNumLobbyMembers(lobby);
+            for (var i = 0; i < count; i++)
+            {
+                if (SteamMatchmaking.GetLobbyMemberByIndex(lobby, i).m_SteamID == steamId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static ulong ReadLobbyHostSteamId(CSteamID lobby)
+        {
+            var hostSteamId = 0UL;
+            try
+            {
+                hostSteamId = SteamMatchmaking.GetLobbyOwner(lobby).m_SteamID;
+            }
+            catch
+            {
+            }
+
+            if (hostSteamId == 0UL)
+            {
+                var raw = SteamMatchmaking.GetLobbyData(lobby, HostSteamIdLobbyKey) ?? string.Empty;
+                ulong.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out hostSteamId);
+            }
+
+            return hostSteamId;
+        }
+
+        private static string DescribeLobbyEnterResponse(EChatRoomEnterResponse response)
+        {
+            var hint = response switch
+            {
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseDoesntExist => "lobby does not exist (host closed it or the invite is stale)",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseNotAllowed => "not allowed (friends-only lobby and not invited / not a friend of the host)",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseFull => "lobby is full",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseBanned => "banned from this lobby",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseLimited => "limited Steam account cannot join lobbies",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseCommunityBan => "Steam community ban",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseMemberBlockedYou => "a lobby member blocked you",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseYouBlockedMember => "you blocked a lobby member",
+                EChatRoomEnterResponse.k_EChatRoomEnterResponseRatelimitExceeded => "too many join attempts, retry in a moment",
+                _ => "Steam refused the lobby entry"
+            };
+            return $"Steam lobby entry failed ({response}): {hint}";
+        }
+
+        private static void AddLobbyCodeListFilters(string normalizedCode)
+        {
+            SteamMatchmaking.AddRequestLobbyListStringFilter(
+                ModMarkerLobbyKey,
+                ModMarkerLobbyValue,
+                ELobbyComparison.k_ELobbyComparisonEqual);
+            SteamMatchmaking.AddRequestLobbyListStringFilter(
+                LobbyCodeLobbyKey,
+                normalizedCode,
+                ELobbyComparison.k_ELobbyComparisonEqual);
+            // Default distance only matches the same/nearby region; a code is unique, so search
+            // worldwide or friends in other regions never find each other.
+            SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
+            SteamMatchmaking.AddRequestLobbyListResultCountFilter(8);
+        }
+
+        private static ulong FindLobbyByCode(string normalizedCode, int count)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var lobby = SteamMatchmaking.GetLobbyByIndex(i);
+                if (lobby.m_SteamID == 0UL)
+                    continue;
+
+                var code = NormalizeLobbyCode(SteamMatchmaking.GetLobbyData(lobby, LobbyCodeLobbyKey));
+                if (string.Equals(code, normalizedCode, StringComparison.Ordinal))
+                    return lobby.m_SteamID;
+            }
+
+            return 0UL;
+        }
+
+        private static bool TryResolveJoinViaHelperProcess(ulong lobbyId, string lobbyCode, out JoinLobbyResult result)
+        {
             var request = new WorkerRequest
             {
                 Mode = "join",
                 LobbyId = lobbyId,
-                LobbyCode = string.Empty
+                LobbyCode = lobbyCode ?? string.Empty
             };
 
             var workerSucceeded = TryRunWorker(request, out var response);
@@ -357,7 +754,6 @@ namespace DeadCellsMultiplayerMod
             if (!workerSucceeded)
             {
                 var err = string.IsNullOrWhiteSpace(response.Error) ? "Steam worker process failed" : response.Error;
-                ModEntry.Instance?.Logger?.Warning("[NetMod][Steam] TryResolveJoinEndpointFromLobbyId failed: lobbyId={LobbyId} error={Error}", lobbyId, err);
                 result = new JoinLobbyResult
                 {
                     Success = false,
@@ -396,7 +792,6 @@ namespace DeadCellsMultiplayerMod
                 Error = string.Empty
             };
 
-            ModEntry.Instance?.Logger?.Information("[NetMod][Steam] TryResolveJoinEndpointFromLobbyId success: lobbyId={LobbyId} hostSteamId={HostSteamId}", lobbyId, response.HostSteamId);
             return true;
         }
 
@@ -880,13 +1275,42 @@ namespace DeadCellsMultiplayerMod
             if (string.IsNullOrWhiteSpace(executablePath))
                 throw new InvalidOperationException("Could not determine current process path for Steam worker");
 
-            return new ProcessStartInfo
+            var startInfo = new ProcessStartInfo
             {
                 FileName = executablePath,
                 WorkingDirectory = Environment.CurrentDirectory,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            // The helper is a fresh process that must locate steam_api64.dll by itself. Hand it the
+            // directory of the copy the game already loaded successfully.
+            var steamApiDir = TryGetLoadedSteamApiDirectory();
+            if (!string.IsNullOrWhiteSpace(steamApiDir))
+                startInfo.Environment[EnvSteamApiDir] = steamApiDir;
+
+            return startInfo;
+        }
+
+        private static string? TryGetLoadedSteamApiDirectory()
+        {
+            try
+            {
+                var module = GetModuleHandle(Environment.Is64BitProcess ? "steam_api64.dll" : "steam_api.dll");
+                if (module == IntPtr.Zero)
+                    return null;
+
+                var buffer = new StringBuilder(1024);
+                var length = GetModuleFileName(module, buffer, (uint)buffer.Capacity);
+                if (length == 0 || length >= buffer.Capacity)
+                    return null;
+
+                return Path.GetDirectoryName(buffer.ToString());
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         internal static ProcessStartInfo BuildWorkerStartInfoForRuntime()
@@ -944,24 +1368,39 @@ namespace DeadCellsMultiplayerMod
         private static WorkerResponse ExecuteWorkerRequest(WorkerRequest request, string? responsePath, out bool responseWritten)
         {
             responseWritten = false;
-            PrepareSteamNativePath();
+            var nativeLibrary = PrepareSteamNativeLibraryForWorker();
 
-            if (SteamAPI.RestartAppIfNecessary(new AppId_t(DeadCellsAppId)))
+            bool initialized;
+            try
             {
-                return new WorkerResponse
+                if (SteamAPI.RestartAppIfNecessary(new AppId_t(DeadCellsAppId)))
                 {
-                    Success = false,
-                    Error = "Steam requested app restart"
-                };
-            }
+                    return new WorkerResponse
+                    {
+                        Success = false,
+                        Error = "Steam requested app restart"
+                    };
+                }
 
-            if (!SteamAPI.Init())
+                initialized = SteamAPI.Init();
+            }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
             {
                 WriteSteamInitDiagnostics();
                 return new WorkerResponse
                 {
                     Success = false,
-                    Error = "Steam API init failed. Ensure Steam client is running and the game was launched from Steam."
+                    Error = $"Steam helper could not load the Steam API ({nativeLibrary}): {ex.GetType().Name}: {ex.Message}"
+                };
+            }
+
+            if (!initialized)
+            {
+                WriteSteamInitDiagnostics();
+                return new WorkerResponse
+                {
+                    Success = false,
+                    Error = $"Steam API init failed in helper ({nativeLibrary}). Ensure Steam client is running and the game was launched from Steam."
                 };
             }
 
@@ -1135,14 +1574,17 @@ namespace DeadCellsMultiplayerMod
             var lobbyId = created.m_ulSteamIDLobby;
             var lobby = new CSteamID(lobbyId);
             var lobbyCode = BuildLobbyCodeFromLobbyId(lobbyId);
-            SteamMatchmaking.SetLobbyJoinable(lobby, true);
-            SteamMatchmaking.SetLobbyType(lobby, lobbyType);
-            SteamMatchmaking.SetLobbyData(lobby, HostIpLobbyKey, ip);
-            SteamMatchmaking.SetLobbyData(lobby, HostPortLobbyKey, port.ToString(CultureInfo.InvariantCulture));
-            SteamMatchmaking.SetLobbyData(lobby, ModMarkerLobbyKey, ModMarkerLobbyValue);
-            SteamMatchmaking.SetLobbyData(lobby, LobbyCodeLobbyKey, lobbyCode);
-            SteamMatchmaking.SetLobbyData(lobby, LobbyVisibilityLobbyKey, visibility.ToString());
-            SetCompatibilityLobbyData(lobby);
+            var rejected = new List<string>();
+            if (!SteamMatchmaking.SetLobbyJoinable(lobby, true))
+                rejected.Add("SetLobbyJoinable");
+            if (!SteamMatchmaking.SetLobbyType(lobby, lobbyType))
+                rejected.Add("SetLobbyType");
+            SetLobbyDataChecked(lobby, HostIpLobbyKey, ip, rejected);
+            SetLobbyDataChecked(lobby, HostPortLobbyKey, port.ToString(CultureInfo.InvariantCulture), rejected);
+            SetLobbyDataChecked(lobby, ModMarkerLobbyKey, ModMarkerLobbyValue, rejected);
+            SetLobbyDataChecked(lobby, LobbyCodeLobbyKey, lobbyCode, rejected);
+            SetLobbyDataChecked(lobby, LobbyVisibilityLobbyKey, visibility.ToString(), rejected);
+            SetCompatibilityLobbyData(lobby, rejected);
 
             result = new HostLobbyResult
             {
@@ -1151,9 +1593,44 @@ namespace DeadCellsMultiplayerMod
                 HostIp = ip,
                 HostPort = port,
                 PersonaName = SafeGetPersonaName(),
-                Visibility = visibility
+                Visibility = visibility,
+                Warning = rejected.Count == 0
+                    ? string.Empty
+                    : $"Steam rejected: {string.Join(", ", rejected)}"
             };
             return true;
+        }
+
+        private static void SetLobbyDataChecked(CSteamID lobby, string key, string value, List<string>? rejected)
+        {
+            if (!SteamMatchmaking.SetLobbyData(lobby, key, value))
+                rejected?.Add(key);
+        }
+
+        /// <summary>
+        /// Read-back of a freshly created host lobby for the log. Lobby type and the joinable flag
+        /// have no getters in Steamworks; their setters' results are reported via HostLobbyResult.Warning.
+        /// </summary>
+        internal static string DescribeHostLobbyState(ulong lobbyId)
+        {
+            if (lobbyId == 0UL)
+                return "lobby id is 0";
+
+            var lobby = new CSteamID(lobbyId);
+            var owner = SteamMatchmaking.GetLobbyOwner(lobby).m_SteamID;
+            var local = SteamUser.GetSteamID().m_SteamID;
+            var members = SteamMatchmaking.GetNumLobbyMembers(lobby);
+            var limit = SteamMatchmaking.GetLobbyMemberLimit(lobby);
+            var missing = new List<string>();
+            foreach (var key in new[] { ModMarkerLobbyKey, ProtocolLobbyKey, BuildLobbyKey, JoinableLobbyKey, HostSteamIdLobbyKey, LobbyCodeLobbyKey })
+            {
+                if (string.IsNullOrWhiteSpace(SteamMatchmaking.GetLobbyData(lobby, key)))
+                    missing.Add(key);
+            }
+
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"ownerIsSelf={owner != 0UL && owner == local} members={members}/{limit} joinableKey={SteamMatchmaking.GetLobbyData(lobby, JoinableLobbyKey)} build={SteamMatchmaking.GetLobbyData(lobby, BuildLobbyKey)} protocol={SteamMatchmaking.GetLobbyData(lobby, ProtocolLobbyKey)} missingKeys={(missing.Count == 0 ? "none" : string.Join(",", missing))}");
         }
 
         private static ELobbyType ToSteamLobbyType(SteamLobbyVisibility visibility) =>
@@ -1166,24 +1643,26 @@ namespace DeadCellsMultiplayerMod
                 ? parsed
                 : SteamLobbyVisibility.FriendsOnly;
 
-        private static void SetCompatibilityLobbyData(CSteamID lobby)
+        private static void SetCompatibilityLobbyData(CSteamID lobby, List<string>? rejected = null)
         {
-            SteamMatchmaking.SetLobbyData(
+            SetLobbyDataChecked(
                 lobby,
                 ProtocolLobbyKey,
-                BuildInfo.NetworkProtocolVersion.ToString(CultureInfo.InvariantCulture));
-            SteamMatchmaking.SetLobbyData(lobby, BuildLobbyKey, BuildInfo.Version);
-            SteamMatchmaking.SetLobbyData(lobby, JoinableLobbyKey, "1");
+                BuildInfo.NetworkProtocolVersion.ToString(CultureInfo.InvariantCulture),
+                rejected);
+            SetLobbyDataChecked(lobby, BuildLobbyKey, BuildInfo.Version, rejected);
+            SetLobbyDataChecked(lobby, JoinableLobbyKey, "1", rejected);
 
             try
             {
                 var localSteamId = SteamUser.GetSteamID().m_SteamID;
                 if (localSteamId != 0UL)
                 {
-                    SteamMatchmaking.SetLobbyData(
+                    SetLobbyDataChecked(
                         lobby,
                         HostSteamIdLobbyKey,
-                        localSteamId.ToString(CultureInfo.InvariantCulture));
+                        localSteamId.ToString(CultureInfo.InvariantCulture),
+                        rejected);
                 }
             }
             catch
@@ -1503,15 +1982,7 @@ namespace DeadCellsMultiplayerMod
                 return false;
             }
 
-            SteamMatchmaking.AddRequestLobbyListStringFilter(
-                ModMarkerLobbyKey,
-                ModMarkerLobbyValue,
-                ELobbyComparison.k_ELobbyComparisonEqual);
-            SteamMatchmaking.AddRequestLobbyListStringFilter(
-                LobbyCodeLobbyKey,
-                normalizedCode,
-                ELobbyComparison.k_ELobbyComparisonEqual);
-            SteamMatchmaking.AddRequestLobbyListResultCountFilter(8);
+            AddLobbyCodeListFilters(normalizedCode);
 
             var listCall = SteamMatchmaking.RequestLobbyList();
             if (!TryWaitForCallResult(
@@ -1530,20 +2001,9 @@ namespace DeadCellsMultiplayerMod
                 return false;
             }
 
-            var count = (int)matches.m_nLobbiesMatching;
-            for (int i = 0; i < count; i++)
-            {
-                var lobby = SteamMatchmaking.GetLobbyByIndex(i);
-                if (lobby.m_SteamID == 0UL)
-                    continue;
-
-                var code = NormalizeLobbyCode(SteamMatchmaking.GetLobbyData(lobby, LobbyCodeLobbyKey));
-                if (!string.Equals(code, normalizedCode, StringComparison.Ordinal))
-                    continue;
-
-                lobbyId = lobby.m_SteamID;
+            lobbyId = FindLobbyByCode(normalizedCode, (int)matches.m_nLobbiesMatching);
+            if (lobbyId != 0UL)
                 return true;
-            }
 
             error = "Steam lobby code does not exist";
             return false;
@@ -1743,10 +2203,35 @@ namespace DeadCellsMultiplayerMod
             PrepareSteamNativePath();
         }
 
-        private static void PrepareSteamNativePath()
+        /// <summary>
+        /// Helper-process only. Besides SetDllDirectory, loads the chosen steam_api64.dll by full
+        /// path so Steamworks.NET's by-name DllImport binds to the already-loaded module instead of
+        /// depending on the search order. Never call this in the game process: the game already has
+        /// its own copy loaded and a second module with the same name must not appear there.
+        /// </summary>
+        internal static string PrepareSteamNativeLibraryForWorker()
         {
             var steamApiName = Environment.Is64BitProcess ? "steam_api64.dll" : "steam_api.dll";
-            var requiredExport = "SteamAPI_ISteamClient_GetISteamGameSearch";
+            var directory = PrepareSteamNativePath();
+            if (string.IsNullOrWhiteSpace(directory))
+                return $"{steamApiName} not found in any search path";
+
+            var fullPath = Path.Combine(directory, steamApiName);
+            try
+            {
+                return NativeLibrary.TryLoad(fullPath, out _)
+                    ? $"loaded {fullPath}"
+                    : $"preload failed for {fullPath}";
+            }
+            catch (Exception ex)
+            {
+                return $"preload threw {ex.GetType().Name} for {fullPath}";
+            }
+        }
+
+        private static string? PrepareSteamNativePath()
+        {
+            var steamApiName = Environment.Is64BitProcess ? "steam_api64.dll" : "steam_api.dll";
             string? fallbackPath = null;
 
             foreach (var path in GetSteamNativeSearchPaths())
@@ -1762,11 +2247,11 @@ namespace DeadCellsMultiplayerMod
 
                     fallbackPath ??= path;
 
-                    if (!HasSteamApiExport(steamApiPath, requiredExport))
+                    if (!HasSteamApiExport(steamApiPath, SteamApiRequiredExport))
                         continue;
 
                     SetDllDirectory(path);
-                    return;
+                    return path;
                 }
                 catch
                 {
@@ -1783,6 +2268,8 @@ namespace DeadCellsMultiplayerMod
                 {
                 }
             }
+
+            return fallbackPath;
         }
 
         private static IEnumerable<string> GetSteamNativeSearchPaths()
@@ -1811,6 +2298,9 @@ namespace DeadCellsMultiplayerMod
                     searchPaths.Add(fullPath);
             }
 
+            // Set only for helper processes: the directory of the steam_api64.dll the game loaded.
+            Add(Environment.GetEnvironmentVariable(EnvSteamApiDir));
+
             var hlBootPath = Environment.GetEnvironmentVariable("DCCM_HLBOOT_PATH");
             if (!string.IsNullOrWhiteSpace(hlBootPath))
             {
@@ -1830,6 +2320,15 @@ namespace DeadCellsMultiplayerMod
             {
                 Add(Path.Combine(mdkRoot, "..", "native", preferredNativeDir));
                 Add(Path.Combine(mdkRoot, "tools"));
+            }
+
+            // The mod ships its own steam_api64.dll next to DeadCellsMultiplayerMod.dll.
+            try
+            {
+                Add(Path.GetDirectoryName(typeof(SteamConnect).Assembly.Location));
+            }
+            catch
+            {
             }
 
             var steamPath = TryGetSteamInstallPath();

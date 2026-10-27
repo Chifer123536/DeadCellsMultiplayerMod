@@ -75,6 +75,7 @@ namespace DeadCellsMultiplayerMod
                 }
 
                 createdLobby = lobby;
+                LogHostLobbyState(lobby, visibility);
                 bridge = new SteamP2PInProcessBridge(NetRole.Host, 0UL, lobby);
                 return true;
             }
@@ -87,6 +88,27 @@ namespace DeadCellsMultiplayerMod
                 error = ex.Message;
                 return false;
             }
+        }
+
+        private static void LogHostLobbyState(SteamConnect.HostLobbyResult lobby, SteamConnect.SteamLobbyVisibility visibility)
+        {
+            var log = ModEntry.Instance?.Logger;
+            try
+            {
+                var state = ModEntry.RunSteamNetworkingSerialized(() => SteamConnect.DescribeHostLobbyState(lobby.LobbyId));
+                log?.Information(
+                    "[NetMod][Steam] Host lobby created in-process: lobbyId={LobbyId} visibility={Visibility} {State}",
+                    lobby.LobbyId,
+                    visibility,
+                    state);
+            }
+            catch (Exception ex)
+            {
+                log?.Warning("[NetMod][Steam] Host lobby state read-back failed: {Message}", ex.Message);
+            }
+
+            if (!string.IsNullOrWhiteSpace(lobby.Warning))
+                log?.Warning("[NetMod][Steam] Host lobby setup incomplete, joins may fail: lobbyId={LobbyId} {Warning}", lobby.LobbyId, lobby.Warning);
         }
 
         internal static bool TryStartClient(
