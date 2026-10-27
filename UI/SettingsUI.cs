@@ -1,3 +1,4 @@
+using System.Globalization;
 using DeadCellsMultiplayerMod.Interface.ModuleInitializing;
 using DeadCellsMultiplayerMod.Mobs.MobsSynchronization;
 using DeadCellsMultiplayerMod.I18n;
@@ -7,6 +8,7 @@ using Hashlink.Virtuals;
 using HaxeProxy.Runtime;
 using ModCore.Events;
 using ModCore.Utilities;
+using static DeadCellsMultiplayerMod.I18n.CoopText;
 
 namespace DeadCellsMultiplayerMod.UI;
 
@@ -14,10 +16,9 @@ public class SettingsUI :
     IEventReceiver,
     IOnAdvancedModuleInitializing
 {
-    private static bool _hooksAttached;
-    private static bool _isMultiplayerSettingsOpen;
-    private static int _multiplayerSettingsOptionsId = -1;
-    private static readonly string[] DebugPerkFallbackChoices =
+    static readonly double[] HpPresets = { 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0 };
+    static readonly double[] DamagePresets = { 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0 };
+    static readonly string[] DebugPerkFallbackChoices =
     {
         "P_Yolo",
         "P_DeadInside",
@@ -26,20 +27,11 @@ public class SettingsUI :
         "P_Vengeance"
     };
 
-    private static readonly DebugModuleId[] DebugModuleOrder =
-    {
-        DebugModuleId.MultiplayerModLang,
-        DebugModuleId.CineHooks,
-        DebugModuleId.MultiplayerUI,
-        DebugModuleId.LevelInit,
-        DebugModuleId.MobsSynchronization,
-        DebugModuleId.MinimapReveal,
-        DebugModuleId.LevelExitSync,
-        DebugModuleId.InteractionSync,
-        DebugModuleId.ConnectionUI
-    };
+    static bool _hooksAttached;
+    static bool _isMultiplayerSettingsOpen;
+    static int _multiplayerSettingsOptionsId = -1;
 
-    private ModEntry mod { get; set; }
+    ModEntry mod { get; set; }
 
     public SettingsUI(ModEntry entry)
     {
@@ -60,7 +52,7 @@ public class SettingsUI :
         _hooksAttached = true;
     }
 
-    private void Hook_Options_showMain(Hook_Options.orig_showMain orig, Options self)
+    void Hook_Options_showMain(Hook_Options.orig_showMain orig, Options self)
     {
         if (self == null)
         {
@@ -77,15 +69,10 @@ public class SettingsUI :
         try
         {
             int leftPadding = 5;
-            HlAction onSelect = new HlAction(() =>
-            {
-                OpenMultiplayerSettingsMenu(self);
-            });
-
             var entry = self.addSimpleWidget(
                 LobbySession.Localize("Multiplayer settings").AsHaxeString(),
                 null,
-                onSelect,
+                new HlAction(() => OpenMultiplayerSettingsMenu(self)),
                 Ref<int>.From(ref leftPadding),
                 null);
             CoopText.FitTree(entry);
@@ -98,7 +85,7 @@ public class SettingsUI :
         orig(self);
     }
 
-    private void Hook_Options_showCredits(Hook_Options.orig_showCredits orig, Options self)
+    void Hook_Options_showCredits(Hook_Options.orig_showCredits orig, Options self)
     {
         if (!IsMultiplayerSettingsContext(self))
         {
@@ -109,9 +96,9 @@ public class SettingsUI :
         BuildMultiplayerSettingsSection(self);
     }
 
-    private void Hook_Options_onDispose(Hook_Options.orig_onDispose orig, Options self)
+    void Hook_Options_onDispose(Hook_Options.orig_onDispose orig, Options self)
     {
-        bool wasMultiplayerSettings = IsMultiplayerSettingsContext(self);
+        var wasMultiplayerSettings = IsMultiplayerSettingsContext(self);
         orig(self);
 
         if (wasMultiplayerSettings)
@@ -121,7 +108,7 @@ public class SettingsUI :
         }
     }
 
-    private void OpenMultiplayerSettingsMenu(Options self)
+    void OpenMultiplayerSettingsMenu(Options self)
     {
         try
         {
@@ -139,7 +126,7 @@ public class SettingsUI :
         }
     }
 
-    private static bool IsMultiplayerSettingsContext(Options self)
+    static bool IsMultiplayerSettingsContext(Options self)
     {
         return _isMultiplayerSettingsOpen
             && self != null
@@ -147,13 +134,13 @@ public class SettingsUI :
             && self.uniqId == _multiplayerSettingsOptionsId;
     }
 
-    private static void ResetMenuState()
+    static void ResetMenuState()
     {
         _isMultiplayerSettingsOpen = false;
         _multiplayerSettingsOptionsId = -1;
     }
 
-    private void BuildMultiplayerSettingsSection(Options self)
+    void BuildMultiplayerSettingsSection(Options self)
     {
         try
         {
@@ -163,30 +150,31 @@ public class SettingsUI :
             self.title?.set_text(LobbySession.Localize("Multiplayer settings").AsHaxeString());
             self.createScroller(0.0);
 
-            var widgetParent = self.scrollerFlow;
-            if (widgetParent == null)
+            var parent = self.scrollerFlow;
+            if (parent == null)
                 return;
 
-            AddGeneralSettingsWidgets(self, widgetParent);
-            AddMobsSettingsWidgets(self, widgetParent);
-            AddDebugSettingsWidgets(self, widgetParent);
-            CoopText.FitTree(widgetParent);
-            CoopText.FitTree(self.title);
+            AddGeneralSection(self, parent);
+            AddHostSection(self, parent);
+            AddAchievementsSection(self, parent);
+            AddControlsSection(self, parent);
+            if (MultiplayerSettingsStorage.IsDebugSectionEnabled)
+                AddDebugSection(self, parent);
 
             int leftPadding = 5;
-            HlAction onBack = new HlAction(() =>
-            {
-                if (self != null && !self.destroyed)
-                    self.onQuit();
-            });
-
             self.addSimpleWidget(
                 LobbySession.Localize("Back").AsHaxeString(),
                 null,
-                onBack,
+                new HlAction(() =>
+                {
+                    if (self != null && !self.destroyed)
+                        self.onQuit();
+                }),
                 Ref<int>.From(ref leftPadding),
-                widgetParent);
+                parent);
 
+            CoopText.FitTree(parent);
+            CoopText.FitTree(self.title);
             self.updateScroller();
         }
         catch (Exception ex)
@@ -195,59 +183,222 @@ public class SettingsUI :
         }
     }
 
-    private void AddGeneralSettingsWidgets(Options self, dc.h2d.Flow widgetParent)
+    static void AddGeneralSection(Options self, dc.h2d.Flow parent)
     {
-        if (self == null || widgetParent == null)
-            return;
-
-        AddSectionLabel(self, widgetParent, "General");
+        AddSection(self, parent, T("General"));
 
         var choices = CoopText.Choices;
-        var labels = ArrayUtils.CreateDyn();
+        var labels = new string[choices.Length];
         var current = 0;
-        for (int i = 0; i < choices.Length; i++)
+        for (var i = 0; i < choices.Length; i++)
         {
-            labels.array.pushDyn(CoopText.ChoiceLabel(choices[i]).AsHaxeString());
+            labels[i] = CoopText.ChoiceLabel(choices[i]);
             if (choices[i] == CoopText.Mode)
                 current = i;
         }
 
-        int leftPadding = 0;
-        self.addListWidget(
-            LobbySession.Localize("Mod language").AsHaxeString(),
-            LobbySession.Localize("Language of the co-op menus. \"As in game\" follows the game language.").AsHaxeString(),
-            new HlAction<int>(index => OnModLanguageChanged(self, index)),
-            current,
-            choices.Length,
-            (dc.hl.types.ArrayObj)labels.array,
-            Ref<int>.From(ref leftPadding),
-            widgetParent);
-
-        AddScrollChoiceWidget(self, widgetParent);
+        AddList(self, parent,
+            T("Mod language"),
+            T("Language of the co-op menus. \"As in game\" follows the game language."),
+            labels, current, index => OnModLanguageChanged(self, index));
     }
 
-    static void AddScrollChoiceWidget(Options self, dc.h2d.Flow widgetParent)
+    static void AddHostSection(Options self, dc.h2d.Flow parent)
     {
-        var modes = ScrollChoiceWire.AllModes;
-        var labels = ArrayUtils.CreateDyn();
-        var current = 0;
-        for (int i = 0; i < modes.Length; i++)
+        AddSection(self, parent, T("Host settings"));
+
+        var difficulties = CoopBalance.All;
+        var difficultyLabels = new string[difficulties.Length];
+        var currentDifficulty = 0;
+        for (var i = 0; i < difficulties.Length; i++)
         {
-            labels.array.pushDyn(LobbySession.Localize(ScrollChoiceModeLabel(modes[i])).AsHaxeString());
-            if (modes[i] == ScrollChoiceSync.HostMode)
-                current = i;
+            difficultyLabels[i] = LobbySession.GetDifficultyName(difficulties[i]);
+            if (difficulties[i] == CoopBalanceSync.HostDifficulty)
+                currentDifficulty = i;
         }
+
+        AddList(self, parent,
+            T("Co-op difficulty"),
+            T("Scales mob health, boss health and mob damage by the number of players. Set by the host."),
+            difficultyLabels, currentDifficulty, OnCoopDifficultyChanged);
+
+        AddPercentList(self, parent, T("Mob health"), HpPresets, MultiplayerSettingsStorage.MobsHpMultiplier, index =>
+        {
+            MultiplayerSettingsStorage.MobsHpMultiplier = HpPresets[index];
+            ModEntry._net?.SendHpMultipliers();
+        });
+
+        AddPercentList(self, parent, T("Boss health"), HpPresets, MultiplayerSettingsStorage.BossesHpMultiplier, index =>
+        {
+            MultiplayerSettingsStorage.BossesHpMultiplier = HpPresets[index];
+            ModEntry._net?.SendHpMultipliers();
+        });
+
+        AddPercentList(self, parent, T("Mob damage"), DamagePresets, MultiplayerSettingsStorage.MobsDamageMultiplier, index =>
+        {
+            MultiplayerSettingsStorage.MobsDamageMultiplier = DamagePresets[index];
+            CoopBalanceSync.OnSettingsChanged();
+        });
+
+        var modes = ScrollChoiceWire.AllModes;
+        var modeLabels = new string[modes.Length];
+        var currentMode = 0;
+        for (var i = 0; i < modes.Length; i++)
+        {
+            modeLabels[i] = LobbySession.Localize(ScrollChoiceModeLabel(modes[i]));
+            if (modes[i] == ScrollChoiceSync.HostMode)
+                currentMode = i;
+        }
+
+        AddList(self, parent,
+            T("Scroll pick"),
+            T("What happens for everyone while a player picks a scroll. Set by the host."),
+            modeLabels, currentMode, index =>
+            {
+                if (index >= 0 && index < modes.Length)
+                    ScrollChoiceSync.SetHostMode(modes[index]);
+            });
+    }
+
+    static void AddAchievementsSection(Options self, dc.h2d.Flow parent)
+    {
+        AddSection(self, parent, T("Achievements"));
+
+        AddToggle(self, parent,
+            T("Steam achievements"),
+            T("Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."),
+            MultiplayerSettingsStorage.SteamAchievements,
+            () => MultiplayerSettingsStorage.SteamAchievements = !MultiplayerSettingsStorage.SteamAchievements);
+
+        AddToggle(self, parent,
+            T("Shared achievements"),
+            T("Also unlock the achievements your teammates get. They need the same mod version."),
+            MultiplayerSettingsStorage.ShareAchievements,
+            () => MultiplayerSettingsStorage.ShareAchievements = !MultiplayerSettingsStorage.ShareAchievements);
+    }
+
+    static void AddControlsSection(Options self, dc.h2d.Flow parent)
+    {
+        AddSection(self, parent, T("Controls"));
+
+        int leftPadding = 5;
+        self.addSimpleWidget(
+            LobbySession.Localize("Emote wheel: hold T or L3").AsHaxeString(),
+            LobbySession.Localize("Press the left stick without tilting it, pick with the right stick or the mouse, then release.").AsHaxeString(),
+            new HlAction(() => { }),
+            Ref<int>.From(ref leftPadding),
+            parent);
+    }
+
+    static void AddDebugSection(Options self, dc.h2d.Flow parent)
+    {
+        AddSection(self, parent, T("Debug"));
+
+        AddToggle(self, parent, T("Player immortal"), null,
+            MultiplayerSettingsStorage.DebugPlayerImmortal,
+            () => MultiplayerSettingsStorage.DebugPlayerImmortal = !MultiplayerSettingsStorage.DebugPlayerImmortal);
+
+        AddToggle(self, parent, T("Use Explorer's Rune"), null,
+            MultiplayerSettingsStorage.DebugUseExplorersRune,
+            () => MultiplayerSettingsStorage.DebugUseExplorersRune = !MultiplayerSettingsStorage.DebugUseExplorersRune);
+
+        var perks = BuildDebugPerkChoices();
+        AddList(self, parent, T("Start perk"), null, perks.ToArray(), ResolveCurrentDebugPerkIndex(perks), index =>
+        {
+            if (index >= 0 && index < perks.Count)
+                MultiplayerSettingsStorage.DebugStartPerkId = perks[index];
+        });
+
+        AddToggle(self, parent, T("Enable mobs sync"), null,
+            MultiplayerSettingsStorage.EnableMobsSync,
+            ToggleMobsSync);
+
+        AddToggle(self, parent, T("Sync vertical position"),
+            T("Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."),
+            MultiplayerSettingsStorage.SyncVerticalPosition,
+            () => MultiplayerSettingsStorage.SyncVerticalPosition = !MultiplayerSettingsStorage.SyncVerticalPosition);
+
+        AddToggle(self, parent, T("Mobs sync trace logging"), null,
+            MultiplayerSettingsStorage.DebugMobsSyncTrace,
+            () => MultiplayerSettingsStorage.DebugMobsSyncTrace = !MultiplayerSettingsStorage.DebugMobsSyncTrace);
+
+        AddToggle(self, parent, T("Boss sync trace logging"), null,
+            MultiplayerSettingsStorage.DebugBossSyncTrace,
+            () => MultiplayerSettingsStorage.DebugBossSyncTrace = !MultiplayerSettingsStorage.DebugBossSyncTrace);
+
+        AddToggle(self, parent, T("Show perf logs"),
+            T("Controls threshold-based [Perf] hitch and slowdown logging."),
+            MultiplayerSettingsStorage.ShowPerfLogs,
+            () => MultiplayerSettingsStorage.ShowPerfLogs = !MultiplayerSettingsStorage.ShowPerfLogs);
+    }
+
+    static void AddSection(Options self, dc.h2d.Flow parent, string label)
+    {
+        var localized = label.AsHaxeString();
+        try
+        {
+            self.addSeparator(localized, parent);
+        }
+        catch
+        {
+            int leftPadding = 0;
+            self.addSimpleWidget(localized, null, new HlAction(() => { }), Ref<int>.From(ref leftPadding), parent);
+        }
+    }
+
+    static void AddList(Options self, dc.h2d.Flow parent, string label, string? description, string[] values, int current, Action<int> onChange)
+    {
+        var labels = ArrayUtils.CreateDyn();
+        foreach (var value in values)
+            labels.array.pushDyn(value.AsHaxeString());
 
         int padding = 0;
         self.addListWidget(
-            LobbySession.Localize("Scroll pick").AsHaxeString(),
-            LobbySession.Localize("What happens for everyone while a player picks a scroll. Set by the host.").AsHaxeString(),
-            new HlAction<int>(OnScrollChoiceModeChanged),
-            current,
-            modes.Length,
+            label.AsHaxeString(),
+            description?.AsHaxeString(),
+            new HlAction<int>(index => onChange(index)),
+            Math.Clamp(current, 0, Math.Max(0, values.Length - 1)),
+            values.Length,
             (dc.hl.types.ArrayObj)labels.array,
             Ref<int>.From(ref padding),
-            widgetParent);
+            parent);
+    }
+
+    static void AddPercentList(Options self, dc.h2d.Flow parent, string label, double[] presets, double current, Action<int> onChange)
+    {
+        var labels = new string[presets.Length];
+        for (var i = 0; i < presets.Length; i++)
+            labels[i] = string.Create(CultureInfo.InvariantCulture, $"{Math.Round(presets[i] * 100.0):0}%");
+
+        AddList(self, parent, label,
+            T("Extra multiplier on top of co-op difficulty. Set by the host."),
+            labels, NearestPreset(presets, current), index =>
+            {
+                if (index >= 0 && index < presets.Length)
+                    onChange(index);
+            });
+    }
+
+    static void AddToggle(Options self, dc.h2d.Flow parent, string label, string? description, bool current, Func<bool> toggle)
+    {
+        var value = current;
+        self.addToggleWidget(
+            label.AsHaxeString(),
+            description?.AsHaxeString(),
+            new HlFunc<bool>(toggle),
+            Ref<bool>.From(ref value),
+            parent);
+    }
+
+    static int NearestPreset(double[] presets, double value)
+    {
+        var best = 0;
+        for (var i = 1; i < presets.Length; i++)
+        {
+            if (Math.Abs(presets[i] - value) < Math.Abs(presets[best] - value))
+                best = i;
+        }
+        return best;
     }
 
     static string ScrollChoiceModeLabel(ScrollChoiceMode mode) => mode switch
@@ -257,15 +408,7 @@ public class SettingsUI :
         _ => "Pause and show choice"
     };
 
-    static void OnScrollChoiceModeChanged(int index)
-    {
-        var modes = ScrollChoiceWire.AllModes;
-        if (index < 0 || index >= modes.Length)
-            return;
-        ScrollChoiceSync.SetHostMode(modes[index]);
-    }
-
-    private static void OnModLanguageChanged(Options self, int index)
+    static void OnModLanguageChanged(Options self, int index)
     {
         var choices = CoopText.Choices;
         if (index < 0 || index >= choices.Length || choices[index] == CoopText.Mode)
@@ -285,268 +428,30 @@ public class SettingsUI :
         });
     }
 
-    private void AddMobsSettingsWidgets(Options self, dc.h2d.Flow widgetParent)
+    static void OnCoopDifficultyChanged(int index)
     {
-        if (self == null || widgetParent == null)
-            return;
-
-        AddSectionLabel(self, widgetParent, "Mobs settings");
-
         var difficulties = CoopBalance.All;
-        var difficultyLabels = ArrayUtils.CreateDyn();
-        var currentDifficulty = 0;
-        for (int i = 0; i < difficulties.Length; i++)
-        {
-            difficultyLabels.array.pushDyn(LobbySession.GetDifficultyName(difficulties[i]).AsHaxeString());
-            if (difficulties[i] == CoopBalanceSync.HostDifficulty)
-                currentDifficulty = i;
-        }
-
-        int difficultyPadding = 0;
-        self.addListWidget(
-            LobbySession.Localize("Co-op difficulty").AsHaxeString(),
-            LobbySession.Localize("Scales mob health, boss health and mob damage by the number of players. Set by the host.").AsHaxeString(),
-            new HlAction<int>(OnCoopDifficultyChanged),
-            currentDifficulty,
-            difficulties.Length,
-            (dc.hl.types.ArrayObj)difficultyLabels.array,
-            Ref<int>.From(ref difficultyPadding),
-            widgetParent);
-
-        bool enabledNow = MultiplayerSettingsStorage.EnableMobsSync;
-        self.addToggleWidget(
-            LobbySession.Localize("Enable mobs sync").AsHaxeString(),
-            null,
-            new HlFunc<bool>(ToggleMobsSyncSetting),
-            Ref<bool>.From(ref enabledNow),
-            widgetParent);
-
-        double mobsHpValue = MultiplayerSettingsStorage.MobsHpMultiplier;
-        double mobsHpStep = 0.10;
-        bool mobsHpPercentDisplay = false;
-        bool mobsHpRawDisplay = true;
-        double mobsHpMin = 0.25;
-        double mobsHpMax = 8.00;
-
-        self.addSliderWidget(
-            LobbySession.Localize("Mobs HP multiplier").AsHaxeString(),
-            new HlAction<double>(OnMobsHpSliderChanged),
-            mobsHpValue,
-            Ref<double>.From(ref mobsHpStep),
-            widgetParent,
-            Ref<bool>.From(ref mobsHpPercentDisplay),
-            Ref<bool>.From(ref mobsHpRawDisplay),
-            Ref<double>.From(ref mobsHpMin),
-            Ref<double>.From(ref mobsHpMax),
-            null,
-            Ref<int>.Null);
-
-        double bossesHpValue = MultiplayerSettingsStorage.BossesHpMultiplier;
-        double bossesHpStep = 0.10;
-        bool bossesHpPercentDisplay = false;
-        bool bossesHpRawDisplay = true;
-        double bossesHpMin = 0.25;
-        double bossesHpMax = 8.00;
-
-        self.addSliderWidget(
-            LobbySession.Localize("Bosses HP multiplier").AsHaxeString(),
-            new HlAction<double>(OnBossesHpSliderChanged),
-            bossesHpValue,
-            Ref<double>.From(ref bossesHpStep),
-            widgetParent,
-            Ref<bool>.From(ref bossesHpPercentDisplay),
-            Ref<bool>.From(ref bossesHpRawDisplay),
-            Ref<double>.From(ref bossesHpMin),
-            Ref<double>.From(ref bossesHpMax),
-            null,
-            Ref<int>.Null);
-
-        double mobsDamageValue = MultiplayerSettingsStorage.MobsDamageMultiplier;
-        double mobsDamageStep = 0.05;
-        bool mobsDamagePercentDisplay = false;
-        bool mobsDamageRawDisplay = true;
-        double mobsDamageMin = 0.25;
-        double mobsDamageMax = 4.00;
-
-        self.addSliderWidget(
-            LobbySession.Localize("Mobs damage multiplier").AsHaxeString(),
-            new HlAction<double>(OnMobsDamageSliderChanged),
-            mobsDamageValue,
-            Ref<double>.From(ref mobsDamageStep),
-            widgetParent,
-            Ref<bool>.From(ref mobsDamagePercentDisplay),
-            Ref<bool>.From(ref mobsDamageRawDisplay),
-            Ref<double>.From(ref mobsDamageMin),
-            Ref<double>.From(ref mobsDamageMax),
-            null,
-            Ref<int>.Null);
-
-        bool verticalSyncNow = MultiplayerSettingsStorage.SyncVerticalPosition;
-        self.addToggleWidget(
-            LobbySession.Localize("Sync vertical position").AsHaxeString(),
-            LobbySession.Localize(
-                    "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs.")
-                .AsHaxeString(),
-            new HlFunc<bool>(ToggleVerticalSyncSetting),
-            Ref<bool>.From(ref verticalSyncNow),
-            widgetParent);
-    }
-
-    private static string GetDebugModuleToggleLabel(DebugModuleId id)
-    {
-        return id switch
-        {
-            DebugModuleId.MultiplayerModLang => LobbySession.Localize("Module: language"),
-            DebugModuleId.CineHooks => LobbySession.Localize("Module: cinematics hooks"),
-            DebugModuleId.MultiplayerUI => LobbySession.Localize("Module: multiplayer UI"),
-            DebugModuleId.LevelInit => LobbySession.Localize("Module: level init"),
-            DebugModuleId.MobsSynchronization => LobbySession.Localize("Module: mobs sync"),
-            DebugModuleId.MinimapReveal => LobbySession.Localize("Module: minimap reveal"),
-            DebugModuleId.LevelExitSync => LobbySession.Localize("Module: level exit sync"),
-            DebugModuleId.InteractionSync => LobbySession.Localize("Module: interaction sync"),
-            DebugModuleId.ConnectionUI => LobbySession.Localize("Module: connection UI"),
-            _ => LobbySession.Localize("Module")
-        };
-    }
-
-    private void AddDebugSettingsWidgets(Options self, dc.h2d.Flow widgetParent)
-    {
-        if (!MultiplayerSettingsStorage.IsDebugSectionEnabled || self == null || widgetParent == null)
+        if (index < 0 || index >= difficulties.Length)
             return;
-
-        AddSectionLabel(self, widgetParent, "Debug");
-
-        foreach (var moduleId in DebugModuleOrder)
-        {
-            bool enabledNow = MultiplayerSettingsStorage.IsModuleEnabled(moduleId);
-            self.addToggleWidget(
-                GetDebugModuleToggleLabel(moduleId).AsHaxeString(),
-                null,
-                new HlFunc<bool>(() => ToggleModuleSetting(moduleId)),
-                Ref<bool>.From(ref enabledNow),
-                widgetParent);
-        }
-
-        bool immortalNow = MultiplayerSettingsStorage.DebugPlayerImmortal;
-        self.addToggleWidget(
-            LobbySession.Localize("Player immortal").AsHaxeString(),
-            null,
-            new HlFunc<bool>(ToggleDebugImmortalSetting),
-            Ref<bool>.From(ref immortalNow),
-            widgetParent);
-
-        bool explorersRuneNow = MultiplayerSettingsStorage.DebugUseExplorersRune;
-        self.addToggleWidget(
-            LobbySession.Localize("Use Explorer's Rune").AsHaxeString(),
-            null,
-            new HlFunc<bool>(ToggleDebugUseExplorersRuneSetting),
-            Ref<bool>.From(ref explorersRuneNow),
-            widgetParent);
-
-        bool mobsSyncTraceNow = MultiplayerSettingsStorage.DebugMobsSyncTrace;
-        self.addToggleWidget(
-            LobbySession.Localize("Mobs sync trace logging").AsHaxeString(),
-            null,
-            new HlFunc<bool>(ToggleDebugMobsSyncTraceSetting),
-            Ref<bool>.From(ref mobsSyncTraceNow),
-            widgetParent);
-
-        bool bossSyncTraceNow = MultiplayerSettingsStorage.DebugBossSyncTrace;
-        self.addToggleWidget(
-            LobbySession.Localize("Boss sync trace logging").AsHaxeString(),
-            null,
-            new HlFunc<bool>(ToggleDebugBossSyncTraceSetting),
-            Ref<bool>.From(ref bossSyncTraceNow),
-            widgetParent);
-
-        bool showPerfLogsNow = MultiplayerSettingsStorage.ShowPerfLogs;
-        self.addToggleWidget(
-            LobbySession.Localize("Show perf logs").AsHaxeString(),
-            LobbySession.Localize("Controls threshold-based [Perf] hitch and slowdown logging.").AsHaxeString(),
-            new HlFunc<bool>(ToggleShowPerfLogsSetting),
-            Ref<bool>.From(ref showPerfLogsNow),
-            widgetParent);
-
-        var perkChoices = BuildDebugPerkChoices();
-        var selectedPerkIndex = ResolveCurrentDebugPerkIndex(perkChoices);
-        var selectedPerk = perkChoices[selectedPerkIndex];
-
-        int leftPadding = 5;
-        self.addSimpleWidget(
-            LobbySession.Localize("Start perk").AsHaxeString(),
-            selectedPerk.AsHaxeString(),
-            new HlAction(() => { }),
-            Ref<int>.From(ref leftPadding),
-            widgetParent);
-
-        self.addSimpleWidget(
-            LobbySession.Localize("Previous perk").AsHaxeString(),
-            null,
-            new HlAction(() => CycleDebugStartPerk(self, -1)),
-            Ref<int>.From(ref leftPadding),
-            widgetParent);
-
-        self.addSimpleWidget(
-            LobbySession.Localize("Next perk").AsHaxeString(),
-            null,
-            new HlAction(() => CycleDebugStartPerk(self, +1)),
-            Ref<int>.From(ref leftPadding),
-            widgetParent);
+        MultiplayerSettingsStorage.CoopDifficulty = CoopBalance.ToWire(difficulties[index]);
+        CoopBalanceSync.OnSettingsChanged();
     }
 
-    private static void AddSectionLabel(Options self, dc.h2d.Flow widgetParent, string label)
+    static bool ToggleMobsSync()
     {
-        if (self == null || widgetParent == null || string.IsNullOrWhiteSpace(label))
-            return;
+        var enabled = !MultiplayerSettingsStorage.EnableMobsSync;
+        MultiplayerSettingsStorage.EnableMobsSync = enabled;
 
-        var localized = LobbySession.Localize(label).AsHaxeString();
-        try
+        if (!enabled)
         {
-            // Native game header widget (centered title + separator line).
-            self.addSeparator(localized, widgetParent);
-            return;
+            MobsSynchronization.ClearTrackingForLevelChange();
+            try { LobbySession.NetRef?.ClearMobSyncQueues(); } catch { }
         }
-        catch
-        {
-            // Fallback keeps menu usable if separator fails in some contexts.
-            int leftPadding = 0;
-            self.addSimpleWidget(
-                localized,
-                null,
-                new HlAction(() => { }),
-                Ref<int>.From(ref leftPadding),
-                widgetParent);
-        }
+
+        return enabled;
     }
 
-    private void CycleDebugStartPerk(Options self, int delta)
-    {
-        if (self == null || self.destroyed)
-            return;
-
-        try
-        {
-            var perkChoices = BuildDebugPerkChoices();
-            if (perkChoices.Count == 0)
-                return;
-
-            var current = ResolveCurrentDebugPerkIndex(perkChoices);
-            var next = current + delta;
-            while (next < 0)
-                next += perkChoices.Count;
-            while (next >= perkChoices.Count)
-                next -= perkChoices.Count;
-
-            MultiplayerSettingsStorage.DebugStartPerkId = perkChoices[next];
-            self.setSection(new OptionsSection.S_Credits());
-        }
-        catch (Exception ex)
-        {
-            mod.Logger.Warning(ex, "[NetMod] Failed to change debug start perk");
-        }
-    }
-
-    private static List<string> BuildDebugPerkChoices()
+    static List<string> BuildDebugPerkChoices()
     {
         var list = new List<string> { MultiplayerSettingsStorage.NoStartPerkValue };
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -562,8 +467,7 @@ public class SettingsUI :
                 var len = byIndex.get_length();
                 for (var i = 0; i < len; i++)
                 {
-                    var rowObj = byIndex.getDyn(i);
-                    if (rowObj is not HaxeDynObj ho)
+                    if (byIndex.getDyn(i) is not HaxeDynObj ho)
                         continue;
 
                     string? id = null;
@@ -578,10 +482,7 @@ public class SettingsUI :
                         continue;
 
                     var trimmed = id.Trim();
-                    if (!trimmed.StartsWith("P_", StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    if (seen.Add(trimmed))
+                    if (trimmed.StartsWith("P_", StringComparison.OrdinalIgnoreCase) && seen.Add(trimmed))
                         list.Add(trimmed);
                 }
             }
@@ -592,9 +493,8 @@ public class SettingsUI :
 
         if (list.Count == 1)
         {
-            for (int i = 0; i < DebugPerkFallbackChoices.Length; i++)
+            foreach (var fallback in DebugPerkFallbackChoices)
             {
-                var fallback = DebugPerkFallbackChoices[i];
                 if (seen.Add(fallback))
                     list.Add(fallback);
             }
@@ -606,108 +506,28 @@ public class SettingsUI :
         return list;
     }
 
-    private static int ResolveCurrentDebugPerkIndex(List<string> perkChoices)
+    static int ResolveCurrentDebugPerkIndex(List<string> perkChoices)
     {
-        if (perkChoices.Count == 0)
-            return 0;
-
         var selected = MultiplayerSettingsStorage.DebugStartPerkId;
-        for (int i = 0; i < perkChoices.Count; i++)
+        for (var i = 0; i < perkChoices.Count; i++)
         {
             if (string.Equals(perkChoices[i], selected, StringComparison.OrdinalIgnoreCase))
                 return i;
         }
-
         return 0;
     }
-
-    private bool ToggleMobsSyncSetting()
-    {
-        bool enabled = !MultiplayerSettingsStorage.EnableMobsSync;
-        MultiplayerSettingsStorage.EnableMobsSync = enabled;
-
-        if (!enabled)
-        {
-            MobsSynchronization.ClearTrackingForLevelChange();
-            try { LobbySession.NetRef?.ClearMobSyncQueues(); } catch { }
-        }
-
-        return enabled;
-    }
-
-    private static bool ToggleVerticalSyncSetting()
-    {
-        bool enabled = !MultiplayerSettingsStorage.SyncVerticalPosition;
-        MultiplayerSettingsStorage.SyncVerticalPosition = enabled;
-        return enabled;
-    }
-
-    private static bool ToggleModuleSetting(DebugModuleId moduleId)
-    {
-        var enabled = !MultiplayerSettingsStorage.IsModuleEnabled(moduleId);
-        MultiplayerSettingsStorage.SetModuleEnabled(moduleId, enabled);
-        return enabled;
-    }
-
-    private static bool ToggleDebugImmortalSetting()
-    {
-        var enabled = !MultiplayerSettingsStorage.DebugPlayerImmortal;
-        MultiplayerSettingsStorage.DebugPlayerImmortal = enabled;
-        return enabled;
-    }
-
-    private static bool ToggleDebugUseExplorersRuneSetting()
-    {
-        var enabled = !MultiplayerSettingsStorage.DebugUseExplorersRune;
-        MultiplayerSettingsStorage.DebugUseExplorersRune = enabled;
-        return enabled;
-    }
-
-    private static bool ToggleDebugMobsSyncTraceSetting()
-    {
-        var enabled = !MultiplayerSettingsStorage.DebugMobsSyncTrace;
-        MultiplayerSettingsStorage.DebugMobsSyncTrace = enabled;
-        return enabled;
-    }
-
-    private static bool ToggleDebugBossSyncTraceSetting()
-    {
-        var enabled = !MultiplayerSettingsStorage.DebugBossSyncTrace;
-        MultiplayerSettingsStorage.DebugBossSyncTrace = enabled;
-        return enabled;
-    }
-
-    private static bool ToggleShowPerfLogsSetting()
-    {
-        var enabled = !MultiplayerSettingsStorage.ShowPerfLogs;
-        MultiplayerSettingsStorage.ShowPerfLogs = enabled;
-        return enabled;
-    }
-
-    private static void OnMobsHpSliderChanged(double value)
-    {
-        MultiplayerSettingsStorage.MobsHpMultiplier = value;
-        ModEntry._net?.SendHpMultipliers();
-    }
-
-    private static void OnBossesHpSliderChanged(double value)
-    {
-        MultiplayerSettingsStorage.BossesHpMultiplier = value;
-        ModEntry._net?.SendHpMultipliers();
-    }
-
-    static void OnCoopDifficultyChanged(int index)
-    {
-        var difficulties = CoopBalance.All;
-        if (index < 0 || index >= difficulties.Length)
-            return;
-        MultiplayerSettingsStorage.CoopDifficulty = CoopBalance.ToWire(difficulties[index]);
-        CoopBalanceSync.OnSettingsChanged();
-    }
-
-    static void OnMobsDamageSliderChanged(double value)
-    {
-        MultiplayerSettingsStorage.MobsDamageMultiplier = value;
-        CoopBalanceSync.OnSettingsChanged();
-    }
 }
+
+/*
+ * ═══════════════════════════════════════
+ *  SETTINGS UI — КАК РАБОТАЕТ
+ * ═══════════════════════════════════════
+ *  Кнопка «Настройки мультиплеера» в главном экране опций игры; страница рисуется вместо
+ *  раздела Credits (S_Credits) родными виджетами Options: addSeparator / addListWidget /
+ *  addToggleWidget / addSimpleWidget. Сохранение при выходе со страницы и при закрытии опций.
+ *  Разделы: Общие (язык) · Настройки хоста (сложность, % здоровья и урона, выбор свитка) ·
+ *  Достижения (Steam, общие) · Управление (подсказка колеса) · Debug (только при запуске из исходников).
+ *  Множители — списки готовых процентов: родной слайдер печатает float после ×100 с хвостами.
+ *  Сохранённое значение вне списка показывается ближайшим и не перезаписывается, пока его не сменят.
+ * ═══════════════════════════════════════
+*/

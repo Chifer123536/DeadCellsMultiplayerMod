@@ -6,8 +6,8 @@ namespace DeadCellsMultiplayerMod;
 /// </summary>
 internal static class BuildInfo
 {
-    public const string Version = "0.8.91-coop.4";
-    public const string SourceMarker = "v0.8.91-coop.4-p22";
+    public const string Version = "0.8.91-coop.5";
+    public const string SourceMarker = "v0.8.91-coop.5-p23";
     // Protocol 19: launch convergence, level-boundary identity, sequenced level seeds and ordered player positions.
     //   * The host re-publishes the full launch prerequisite set (GEN/CGDATA/RUNCOMMIT/SEED/
     //     RUNEXEC) until the client confirms, and GEN is host-cached and replayed to late joiners.
@@ -36,6 +36,12 @@ internal static class BuildInfo
     //   * SCROLLCFG / SCROLLOPEN / SCROLLSEL / SCROLLEND pause every peer while someone picks a
     //     scroll and mirror the picker's cursor. A peer without them never pauses or resumes.
     //   * EMOTE plays an emote on the sender's ghost; the emote's body anims are not sent as ANIM.
+    //   * ACH shares a Steam achievement the sender's game unlocked. Additive: a protocol 22 peer
+    //     without it drops the line, nothing else is interpreted differently.
+    // Protocol 23 (coop fork):
+    //   * The client hit report (hit|life|damage) carries the damage its replica actually took
+    //     (AttackData.finalDmg); the host applies exactly that. Protocol 22 sent the pre-scaling
+    //     base damage and the host rescaled it with its own hero.
     // These change how peers interpret the same exchange, so cross-version pairing is rejected.
-    public const int NetworkProtocolVersion = 22;
+    public const int NetworkProtocolVersion = 23;
 }

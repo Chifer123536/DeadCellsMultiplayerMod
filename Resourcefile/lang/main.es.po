@@ -23,11 +23,11 @@ msgstr "Cooperativo: conectado al anfitrión"
 msgid "Co-op progression synced: +{0} unlock(s)"
 msgstr "Progreso cooperativo sincronizado: +{0} desbloqueo(s)"
 
-#: FakeDeath/FakeDeath.cs:1339
+#: FakeDeath/FakeDeath.cs:1369
 msgid "Game Over"
 msgstr "Fin del juego"
 
-#: FakeDeath/FakeDeath.cs:440
+#: FakeDeath/FakeDeath.cs:449
 msgid "{0} fell!"
 msgstr "¡{0} cayó!"
 
@@ -99,113 +99,53 @@ msgstr "Guardar: ranura {0}"
 msgid "Copy your save in that slot"
 msgstr "Copia tu partida en esa ranura"
 
-#: UI/LevelExitSync.cs:1120
+#: UI/LevelExitSync.cs:1165
 msgid "{0} reached the exit to {1}"
 msgstr "{0} alcanzó la salida hacia {1}"
 
-#: UI/LevelExitSync.cs:1126
+#: UI/LevelExitSync.cs:1171
 msgid "next area"
 msgstr "siguiente área"
 
-#: UI/LevelExitSync.cs:1179
+#: UI/LevelExitSync.cs:1224
 msgid "Player {0}"
 msgstr "Jugador {0}"
 
-#: UI/SettingsUI.cs:318
-msgid "Enable mobs sync"
-msgstr "Activar sincronización de enemigos"
+#: UI/SettingsUI.cs:295
+msgid "Debug"
+msgstr "Depuración"
 
-#: UI/SettingsUI.cs:332
-msgid "Mobs HP multiplier"
-msgstr "Multiplicador de PV de enemigos"
-
-#: UI/SettingsUI.cs:352
-msgid "Bosses HP multiplier"
-msgstr "Multiplicador de PV de jefes"
-
-#: UI/SettingsUI.cs:386
-msgid "Sync vertical position"
-msgstr "Sincronizar posición vertical"
-
-#: UI/SettingsUI.cs:387
-msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-msgstr "Aplica la posición vertical del anfitrión a los enemigos con gravedad. Desactivado: solo X para los que caminan; los voladores siguen sincronizando Y. Activado: puede reducir el desfase pero provocar saltos en enemigos en el suelo."
-
-#: UI/SettingsUI.cs:399
-msgid "Module: language"
-msgstr "Módulo: idioma"
-
-#: UI/SettingsUI.cs:400
-msgid "Module: cinematics hooks"
-msgstr "Módulo: cinemáticas"
-
-#: UI/SettingsUI.cs:401
-msgid "Module: multiplayer UI"
-msgstr "Módulo: UI multijugador"
-
-#: UI/SettingsUI.cs:402
-msgid "Module: level init"
-msgstr "Módulo: inicio de nivel"
-
-#: UI/SettingsUI.cs:403
-msgid "Module: mobs sync"
-msgstr "Módulo: sincronización de enemigos"
-
-#: UI/SettingsUI.cs:404
-msgid "Module: minimap reveal"
-msgstr "Módulo: revelar minimapa"
-
-#: UI/SettingsUI.cs:405
-msgid "Module: level exit sync"
-msgstr "Módulo: salida de nivel"
-
-#: UI/SettingsUI.cs:406
-msgid "Module: interaction sync"
-msgstr "Módulo: interacciones"
-
-#: UI/SettingsUI.cs:407
-msgid "Module: connection UI"
-msgstr "Módulo: UI de conexión"
-
-#: UI/SettingsUI.cs:408
-msgid "Module"
-msgstr "Módulo"
-
-#: UI/SettingsUI.cs:432
+#: UI/SettingsUI.cs:297
 msgid "Player immortal"
 msgstr "Jugador inmortal"
 
-#: UI/SettingsUI.cs:440
+#: UI/SettingsUI.cs:301
 msgid "Use Explorer's Rune"
 msgstr "Usar la Runa del Explorador"
 
-#: UI/SettingsUI.cs:448
-msgid "Mobs sync trace logging"
-msgstr "Registro de trazas de sincronización de enemigos"
-
-#: UI/SettingsUI.cs:476
+#: UI/SettingsUI.cs:306
 msgid "Start perk"
 msgstr "Perk inicial"
 
-#: UI/SettingsUI.cs:483
-msgid "Previous perk"
-msgstr "Perk anterior"
+#: UI/SettingsUI.cs:312
+msgid "Enable mobs sync"
+msgstr "Activar sincronización de enemigos"
 
-#: UI/SettingsUI.cs:490
-msgid "Next perk"
-msgstr "Perk siguiente"
+#: UI/SettingsUI.cs:316
+msgid "Sync vertical position"
+msgstr "Sincronizar posición vertical"
 
-#: UI/SettingsUI.cs:86
+#: UI/SettingsUI.cs:317
+msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+msgstr "Aplica la posición vertical del anfitrión a los enemigos con gravedad. Desactivado: solo X para los que caminan; los voladores siguen sincronizando Y. Activado: puede reducir el desfase pero provocar saltos en enemigos en el suelo."
+
+#: UI/SettingsUI.cs:321
+msgid "Mobs sync trace logging"
+msgstr "Registro de trazas de sincronización de enemigos"
+
+#: UI/SettingsUI.cs:73
 msgid "Multiplayer settings"
 msgstr "Configuración multijugador"
-
-#: dynamic
-msgid "Mobs settings"
-msgstr "Ajustes de enemigos"
-
-#: dynamic
-msgid "Debug"
-msgstr "Depuración"
 
 #: dynamic
 msgid "Hold to revive."

@@ -1249,6 +1249,16 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
             try
             {
+                var finalDmg = attack.finalDmg;
+                if (finalDmg > 0)
+                    return finalDmg;
+            }
+            catch
+            {
+            }
+
+            try
+            {
                 // baseDmg is Haxe Dynamic on the proxy; bind it statically before converting.
                 object? rawBaseDmg = attack.baseDmg;
                 if (TryConvertAttackDamageScalar(rawBaseDmg, out var baseDmg))

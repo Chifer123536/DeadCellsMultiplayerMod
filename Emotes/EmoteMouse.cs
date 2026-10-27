@@ -20,6 +20,15 @@ internal static class EmoteMouse
         public int Bottom;
     }
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    delegate uint SdlGetRelativeMouseState(out float x, out float y);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    delegate IntPtr SdlGetFocus();
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    delegate byte SdlGetWindowRelativeMouseMode(IntPtr window);
+
     [DllImport("user32.dll")]
     static extern bool GetCursorPos(out Point point);
 
@@ -38,7 +47,16 @@ internal static class EmoteMouse
     [DllImport("user32.dll")]
     static extern bool ClientToScreen(IntPtr window, ref Point point);
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    static extern IntPtr GetModuleHandleW(string moduleName);
+
+    static SdlGetRelativeMouseState? _sdlRelativeState;
+    static SdlGetWindowRelativeMouseMode? _sdlRelativeMode;
+    static SdlGetFocus? _sdlMouseFocus;
+    static SdlGetFocus? _sdlKeyboardFocus;
+
     static bool _captured;
+    static bool _sdlRelative;
     static IntPtr _window;
     static Point _restore;
     static Point _center;
@@ -78,6 +96,15 @@ internal static class EmoteMouse
             if (processId != (uint)Environment.ProcessId)
                 return false;
 
+            if (IsSdlRelativeMode())
+            {
+                _sdlRelativeState!(out _, out _);
+                _window = window;
+                _sdlRelative = true;
+                _captured = true;
+                return true;
+            }
+
             if (!GetClientRect(window, out var rect) || rect.Right - rect.Left < 4 || rect.Bottom - rect.Top < 4)
                 return false;
             var center = new Point { X = (rect.Right - rect.Left) / 2, Y = (rect.Bottom - rect.Top) / 2 };
@@ -89,6 +116,7 @@ internal static class EmoteMouse
             _window = window;
             _restore = restore;
             _center = center;
+            _sdlRelative = false;
             _captured = true;
             return true;
         }
@@ -112,6 +140,18 @@ internal static class EmoteMouse
                 _captured = false;
                 return false;
             }
+
+            if (_sdlRelative)
+            {
+                _sdlRelativeState!(out var rx, out var ry);
+                if (float.IsFinite(rx) && float.IsFinite(ry))
+                {
+                    dx = rx;
+                    dy = ry;
+                }
+                return true;
+            }
+
             if (!GetCursorPos(out var point))
                 return false;
             dx = point.X - _center.X;
@@ -132,6 +172,8 @@ internal static class EmoteMouse
         if (!_captured)
             return;
         _captured = false;
+        if (_sdlRelative)
+            return;
         try
         {
             SetCursorPos(_restore.X, _restore.Y);
@@ -140,17 +182,65 @@ internal static class EmoteMouse
         {
         }
     }
+
+    static bool IsSdlRelativeMode()
+    {
+        if (!ResolveSdl())
+            return false;
+
+        try
+        {
+            var window = _sdlMouseFocus!();
+            if (window == IntPtr.Zero)
+                window = _sdlKeyboardFocus!();
+            return window != IntPtr.Zero && _sdlRelativeMode!(window) != 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    static bool ResolveSdl()
+    {
+        if (_sdlRelativeState != null)
+            return true;
+
+        try
+        {
+            var module = GetModuleHandleW("SDL3.dll");
+            if (module == IntPtr.Zero)
+                return false;
+            if (!NativeLibrary.TryGetExport(module, "SDL_GetRelativeMouseState", out var relativeState) ||
+                !NativeLibrary.TryGetExport(module, "SDL_GetWindowRelativeMouseMode", out var relativeMode) ||
+                !NativeLibrary.TryGetExport(module, "SDL_GetMouseFocus", out var mouseFocus) ||
+                !NativeLibrary.TryGetExport(module, "SDL_GetKeyboardFocus", out var keyboardFocus))
+                return false;
+
+            _sdlRelativeMode = Marshal.GetDelegateForFunctionPointer<SdlGetWindowRelativeMouseMode>(relativeMode);
+            _sdlMouseFocus = Marshal.GetDelegateForFunctionPointer<SdlGetFocus>(mouseFocus);
+            _sdlKeyboardFocus = Marshal.GetDelegateForFunctionPointer<SdlGetFocus>(keyboardFocus);
+            _sdlRelativeState = Marshal.GetDelegateForFunctionPointer<SdlGetRelativeMouseState>(relativeState);
+            return true;
+        }
+        catch
+        {
+            _sdlRelativeState = null;
+            return false;
+        }
+    }
 }
 
 /*
  * ═══════════════════════════════════════
  *  EMOTE MOUSE — КАК РАБОТАЕТ
  * ═══════════════════════════════════════
- *  Захват мыши на время колеса через user32: только если активное окно принадлежит игре.
- *  Capture: запомнить позицию, поставить курсор в центр клиентской области окна.
- *  ReadDelta: смещение от центра за кадр, курсор сразу возвращается в центр —
- *  ход мыши не упирается в края экрана и не зависит от скрытого курсора.
- *  Окно игры перестало быть активным — захват снимается без возврата курсора (чужое окно не трогаем).
- *  Release: вернуть курсор туда, где он был до открытия.
+ *  Ход мыши на время колеса, только если активное окно принадлежит игре.
+ *  SDL-сборка (deadcells_gl): при relative mouse mode SDL3 прибивает курсор к центру,
+ *  поэтому дельта берётся из SDL_GetRelativeMouseState уже загруженного SDL3.dll
+ *  (GetModuleHandle, второй копии не грузим). Capture сбрасывает накопленное, курсор не трогается.
+ *  Без relative mode: курсор ставится в центр клиентской области, ReadDelta = смещение от центра
+ *  за кадр с возвратом в центр, Release возвращает курсор на исходное место.
+ *  Окно игры перестало быть активным — захват снимается без возврата курсора.
  * ═══════════════════════════════════════
 */

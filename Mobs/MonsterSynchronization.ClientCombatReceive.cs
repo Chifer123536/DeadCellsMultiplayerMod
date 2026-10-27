@@ -189,6 +189,46 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             s_dieVictimsScratch.Clear();
         }
 
+        private static void ReconcileHostLifeAfterHitReplay(Mob mob, PendingMobHitApply update)
+        {
+            int life;
+            try
+            {
+                if (mob.destroyed)
+                    return;
+                life = mob.life;
+            }
+            catch
+            {
+                return;
+            }
+
+            if (life <= 0)
+                return;
+
+            if (update.TargetLife <= 0)
+            {
+                if (update.IsBoss)
+                {
+                    TryApplyHostBossFinishingHit(mob, update.TargetMaxLife);
+                    return;
+                }
+
+                try
+                {
+                    mob.life = 0;
+                    mob.onDie();
+                }
+                catch
+                {
+                }
+                return;
+            }
+
+            if (update.TargetLife < life)
+                ApplyAuthoritativeLifeState(mob, update.TargetLife, update.TargetMaxLife);
+        }
+
         private static bool IsCompletedAuthoritativeBossDeath(Mob mob)
         {
             if (mob == null)
@@ -260,7 +300,11 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     // retained only as a compatibility fallback for packets that carry no damage hint.
                     var replaySpecialHit = isHost && hit.DamageHint > 0.0;
                     if (replaySpecialHit)
-                        targetLife = prevLife;
+                    {
+                        targetLife = ShouldReplayIncomingHitWithoutLifeDelta(mob)
+                            ? prevLife
+                            : System.Math.Clamp(prevLife - (int)System.Math.Ceiling(hit.DamageHint), 0, maxLife);
+                    }
 
                     // On a client, every hit in this queue came from the authoritative host, so its
                     // absolute result is applied even when it raises a speculative local value. On the
@@ -326,15 +370,21 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     // reconstructed hit in the middle of a queued boss skill can strand that script.
                     // Normal mobs and elites always use native host damage, even while attacking, so
                     // their armor/invulnerability/elite callbacks stay vanilla-authoritative.
+                    var exactDamage = isHost && update.TargetLife < update.PreviousLife;
                     if (isHost && update.IsBoss && HasLocalQueuedOrChargingSkill(mob))
                     {
-                        ApplyAuthoritativeLifeState(mob, update.TargetLife, update.TargetMaxLife);
+                        if (update.TargetLife <= 0)
+                            TryApplyHostBossFinishingHit(mob, update.TargetMaxLife);
+                        else
+                            ApplyAuthoritativeLifeState(mob, update.TargetLife, update.TargetMaxLife);
                         appliedLife = GetMobLifeOrFallback(mob, update.TargetLife);
                     }
                     else
                     {
                         TryWakeMobForForcedSimulation(mob);
-                        TryReplayIncomingSpecialHitReaction(mob, update.DamageHint);
+                        TryReplayIncomingSpecialHitReaction(mob, exactDamage ? 1.0 : update.DamageHint);
+                        if (exactDamage)
+                            ReconcileHostLifeAfterHitReplay(mob, update);
                         appliedLife = GetMobLifeOrFallback(mob, update.TargetLife);
                     }
                 }

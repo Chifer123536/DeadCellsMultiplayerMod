@@ -29,15 +29,19 @@ msgstr "Co-op progression synced: +{0} unlock(s)"
 msgid "you"
 msgstr "you"
 
-#: Emotes/EmoteWheel.cs:86
+#: Emotes/EmoteWheel.cs:93
 msgid "Emotes"
 msgstr "Emotes"
 
-#: FakeDeath/FakeDeath.cs:1339
+#: FakeDeath/FakeDeath.cs:1048
+msgid "You need a health flask charge to revive."
+msgstr "You need a health flask charge to revive."
+
+#: FakeDeath/FakeDeath.cs:1369
 msgid "Game Over"
 msgstr "Game Over"
 
-#: FakeDeath/FakeDeath.cs:440
+#: FakeDeath/FakeDeath.cs:449
 msgid "{0} fell!"
 msgstr "{0} fell!"
 
@@ -541,177 +545,165 @@ msgstr "Normal mode"
 msgid "Host cancelled the co-op run launch."
 msgstr "Host cancelled the co-op run launch."
 
-#: UI/LevelExitSync.cs:1120
+#: UI/LevelExitSync.cs:1165
 msgid "{0} reached the exit to {1}"
 msgstr "{0} reached the exit to {1}"
 
-#: UI/LevelExitSync.cs:1126
+#: UI/LevelExitSync.cs:1171
 msgid "next area"
 msgstr "next area"
 
-#: UI/LevelExitSync.cs:1155
+#: UI/LevelExitSync.cs:1200
 msgid "Boss Rush"
 msgstr "Boss Rush"
 
-#: UI/LevelExitSync.cs:1179
+#: UI/LevelExitSync.cs:1224
 msgid "Player {0}"
 msgstr "Player {0}"
 
-#: UI/LevelExitSync.cs:319
+#: UI/LevelExitSync.cs:321
 msgid "The exit stays sealed until the boss falls."
 msgstr "The exit stays sealed until the boss falls."
 
-#: UI/LevelExitSync.cs:663
+#: UI/LevelExitSync.cs:699
 msgid "Still waiting for your friend at this exit."
 msgstr "Still waiting for your friend at this exit."
 
-#: UI/LevelExitSync.cs:711
+#: UI/LevelExitSync.cs:750
 msgid "Teammate reached the exit. Following in {0} seconds..."
 msgstr "Teammate reached the exit. Following in {0} seconds..."
 
-#: UI/LevelExitSync.cs:856
+#: UI/LevelExitSync.cs:901
 msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 msgstr "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 
-#: UI/SettingsUI.cs:217
-msgid "Mod language"
-msgstr "Mod language"
-
-#: UI/SettingsUI.cs:218
-msgid "Language of the co-op menus. \"As in game\" follows the game language."
-msgstr "Language of the co-op menus. \"As in game\" follows the game language."
-
-#: UI/SettingsUI.cs:243
-msgid "Scroll pick"
-msgstr "Scroll pick"
-
-#: UI/SettingsUI.cs:244
-msgid "What happens for everyone while a player picks a scroll. Set by the host."
-msgstr "What happens for everyone while a player picks a scroll. Set by the host."
-
-#: UI/SettingsUI.cs:307
-msgid "Co-op difficulty"
-msgstr "Co-op difficulty"
-
-#: UI/SettingsUI.cs:308
-msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
-msgstr "Scales mob health, boss health and mob damage by the number of players. Set by the host."
-
-#: UI/SettingsUI.cs:318
-msgid "Enable mobs sync"
-msgstr "Enable mobs sync"
-
-#: UI/SettingsUI.cs:332
-msgid "Mobs HP multiplier"
-msgstr "Mobs HP multiplier"
-
-#: UI/SettingsUI.cs:352
-msgid "Bosses HP multiplier"
-msgstr "Bosses HP multiplier"
-
-#: UI/SettingsUI.cs:372
-msgid "Mobs damage multiplier"
-msgstr "Mobs damage multiplier"
-
-#: UI/SettingsUI.cs:386
-msgid "Sync vertical position"
-msgstr "Sync vertical position"
-
-#: UI/SettingsUI.cs:387
-msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-msgstr "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-
-#: UI/SettingsUI.cs:399
-msgid "Module: language"
-msgstr "Module: language"
-
-#: UI/SettingsUI.cs:400
-msgid "Module: cinematics hooks"
-msgstr "Module: cinematics hooks"
-
-#: UI/SettingsUI.cs:401
-msgid "Module: multiplayer UI"
-msgstr "Module: multiplayer UI"
-
-#: UI/SettingsUI.cs:402
-msgid "Module: level init"
-msgstr "Module: level init"
-
-#: UI/SettingsUI.cs:403
-msgid "Module: mobs sync"
-msgstr "Module: mobs sync"
-
-#: UI/SettingsUI.cs:404
-msgid "Module: minimap reveal"
-msgstr "Module: minimap reveal"
-
-#: UI/SettingsUI.cs:405
-msgid "Module: level exit sync"
-msgstr "Module: level exit sync"
-
-#: UI/SettingsUI.cs:406
-msgid "Module: interaction sync"
-msgstr "Module: interaction sync"
-
-#: UI/SettingsUI.cs:407
-msgid "Module: connection UI"
-msgstr "Module: connection UI"
-
-#: UI/SettingsUI.cs:408
-msgid "Module"
-msgstr "Module"
-
-#: UI/SettingsUI.cs:432
-msgid "Player immortal"
-msgstr "Player immortal"
-
-#: UI/SettingsUI.cs:440
-msgid "Use Explorer's Rune"
-msgstr "Use Explorer's Rune"
-
-#: UI/SettingsUI.cs:448
-msgid "Mobs sync trace logging"
-msgstr "Mobs sync trace logging"
-
-#: UI/SettingsUI.cs:456
-msgid "Boss sync trace logging"
-msgstr "Boss sync trace logging"
-
-#: UI/SettingsUI.cs:464
-msgid "Show perf logs"
-msgstr "Show perf logs"
-
-#: UI/SettingsUI.cs:465
-msgid "Controls threshold-based [Perf] hitch and slowdown logging."
-msgstr "Controls threshold-based [Perf] hitch and slowdown logging."
-
-#: UI/SettingsUI.cs:476
-msgid "Start perk"
-msgstr "Start perk"
-
-#: UI/SettingsUI.cs:483
-msgid "Previous perk"
-msgstr "Previous perk"
-
-#: UI/SettingsUI.cs:490
-msgid "Next perk"
-msgstr "Next perk"
-
-#: UI/SettingsUI.cs:86
-msgid "Multiplayer settings"
-msgstr "Multiplayer settings"
-
-#: dynamic
+#: UI/SettingsUI.cs:188
 msgid "General"
 msgstr "General"
 
-#: dynamic
-msgid "Mobs settings"
-msgstr "Mobs settings"
+#: UI/SettingsUI.cs:201
+msgid "Mod language"
+msgstr "Mod language"
 
-#: dynamic
+#: UI/SettingsUI.cs:202
+msgid "Language of the co-op menus. \"As in game\" follows the game language."
+msgstr "Language of the co-op menus. \"As in game\" follows the game language."
+
+#: UI/SettingsUI.cs:208
+msgid "Host settings"
+msgstr "Host settings"
+
+#: UI/SettingsUI.cs:221
+msgid "Co-op difficulty"
+msgstr "Co-op difficulty"
+
+#: UI/SettingsUI.cs:222
+msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
+msgstr "Scales mob health, boss health and mob damage by the number of players. Set by the host."
+
+#: UI/SettingsUI.cs:225
+msgid "Mob health"
+msgstr "Mob health"
+
+#: UI/SettingsUI.cs:231
+msgid "Boss health"
+msgstr "Boss health"
+
+#: UI/SettingsUI.cs:237
+msgid "Mob damage"
+msgstr "Mob damage"
+
+#: UI/SettingsUI.cs:254
+msgid "Scroll pick"
+msgstr "Scroll pick"
+
+#: UI/SettingsUI.cs:255
+msgid "What happens for everyone while a player picks a scroll. Set by the host."
+msgstr "What happens for everyone while a player picks a scroll. Set by the host."
+
+#: UI/SettingsUI.cs:265
+msgid "Achievements"
+msgstr "Achievements"
+
+#: UI/SettingsUI.cs:268
+msgid "Steam achievements"
+msgstr "Steam achievements"
+
+#: UI/SettingsUI.cs:269
+msgid "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
+msgstr "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
+
+#: UI/SettingsUI.cs:274
+msgid "Shared achievements"
+msgstr "Shared achievements"
+
+#: UI/SettingsUI.cs:275
+msgid "Also unlock the achievements your teammates get. They need the same mod version."
+msgstr "Also unlock the achievements your teammates get. They need the same mod version."
+
+#: UI/SettingsUI.cs:282
+msgid "Controls"
+msgstr "Controls"
+
+#: UI/SettingsUI.cs:286
+msgid "Emote wheel: hold T or L3"
+msgstr "Emote wheel: hold T or L3"
+
+#: UI/SettingsUI.cs:287
+msgid "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
+msgstr "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
+
+#: UI/SettingsUI.cs:295
 msgid "Debug"
 msgstr "Debug"
+
+#: UI/SettingsUI.cs:297
+msgid "Player immortal"
+msgstr "Player immortal"
+
+#: UI/SettingsUI.cs:301
+msgid "Use Explorer's Rune"
+msgstr "Use Explorer's Rune"
+
+#: UI/SettingsUI.cs:306
+msgid "Start perk"
+msgstr "Start perk"
+
+#: UI/SettingsUI.cs:312
+msgid "Enable mobs sync"
+msgstr "Enable mobs sync"
+
+#: UI/SettingsUI.cs:316
+msgid "Sync vertical position"
+msgstr "Sync vertical position"
+
+#: UI/SettingsUI.cs:317
+msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+msgstr "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+
+#: UI/SettingsUI.cs:321
+msgid "Mobs sync trace logging"
+msgstr "Mobs sync trace logging"
+
+#: UI/SettingsUI.cs:325
+msgid "Boss sync trace logging"
+msgstr "Boss sync trace logging"
+
+#: UI/SettingsUI.cs:329
+msgid "Show perf logs"
+msgstr "Show perf logs"
+
+#: UI/SettingsUI.cs:330
+msgid "Controls threshold-based [Perf] hitch and slowdown logging."
+msgstr "Controls threshold-based [Perf] hitch and slowdown logging."
+
+#: UI/SettingsUI.cs:374
+msgid "Extra multiplier on top of co-op difficulty. Set by the host."
+msgstr "Extra multiplier on top of co-op difficulty. Set by the host."
+
+#: UI/SettingsUI.cs:73
+msgid "Multiplayer settings"
+msgstr "Multiplayer settings"
 
 #: dynamic
 msgid "Hold to revive."

@@ -471,6 +471,12 @@ public sealed partial class NetNode
             return true;
         }
 
+        if (TryHandleAchievementLine(line, senderId, forceSenderId, out var achievementForwardLine))
+        {
+            forwardLine = achievementForwardLine;
+            return true;
+        }
+
         if (line.StartsWith(RunLaunchWireCodec.CommitTag + "|", StringComparison.Ordinal))
         {
             var payload = line[(RunLaunchWireCodec.CommitTag.Length + 1)..];

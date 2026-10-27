@@ -196,11 +196,10 @@ namespace DeadCellsMultiplayerMod
         private double _postReviveLockY;
         private int _reviveHoldTargetId;
         private long _reviveHoldStartedTicks;
-        private const double ReviveUseDistancePx = 48.0;
+        private const double ReviveUseDistancePx = 64.0;
         private const double ReviveAttemptCooldownSeconds = 0.2;
         private const double ReviveHoldSeconds = 0.7;
-        private const double ReviveHomunculusBodyMaxDistancePx = 64.0;
-        private const double ReviveRemotePositionValidationPx = 96.0;
+        private const double ReviveRemotePositionValidationPx = 192.0;
         private const double RemoteDownedStateStaleSeconds = 6.0;
         private const double DownedStateResendSeconds = 0.4;
         private const double DownedHeadStateResendSeconds = 1.0 / 30.0;
@@ -692,6 +691,7 @@ namespace DeadCellsMultiplayerMod
             Ghost.KingWeaponHooks.Install();
             CoopBalanceSync.Install();
             ScrollChoiceSync.Install();
+            SteamAchievementBridge.Install();
         }
 
         private static void Hook_GlowKey_applyGlowData(
@@ -1475,10 +1475,16 @@ namespace DeadCellsMultiplayerMod
         }
         void IOnHeroUpdate.OnHeroUpdate(double dt)
         {
-            if (!TryGetReadyLocalHero(out _, out var localHero))
+            if (!TryGetReadyLocalHero(out var readyGame, out var localHero, allowInPlaceCine: true))
                 return;
 
             me = localHero;
+            if (readyGame.curCine != null)
+            {
+                UpdateGhostsDuringInPlaceCine();
+                return;
+            }
+
             var hitchStart = RuntimeHitchWatch.Start();
             var stepStart = RuntimeHitchWatch.Start();
             ApplyDebugHeroRuntimeOptions();
@@ -1685,7 +1691,45 @@ namespace DeadCellsMultiplayerMod
             try { ReceiveGhostCoords(); } catch { }
         }
 
-        private bool TryGetReadyLocalHero(out dc.pr.Game localGame, out Hero localHero)
+        private void UpdateGhostsDuringInPlaceCine()
+        {
+            if (_netRole == NetRole.None || _net == null)
+                return;
+
+            if (!_localFakeDead)
+            {
+                SendHeroCoords();
+                RefreshHeroAnimKeyframe();
+            }
+
+            ReceiveGhostCoords();
+            UpdateGhostHeads();
+        }
+
+        private static bool IsInPlaceCinematic(dc.GameCinematic? cine)
+        {
+            if (cine == null || cine.destroyed)
+                return false;
+
+            var name = cine.GetType().Name;
+            if (string.IsNullOrEmpty(name))
+                return false;
+
+            return (name.StartsWith("Enter", StringComparison.Ordinal) && !name.StartsWith("Entering", StringComparison.Ordinal)) ||
+                   name.StartsWith("Start", StringComparison.Ordinal) ||
+                   name.StartsWith("Meet", StringComparison.Ordinal) ||
+                   name.StartsWith("Introduce", StringComparison.Ordinal) ||
+                   name.EndsWith("Opening", StringComparison.Ordinal) ||
+                   name.EndsWith("Found", StringComparison.Ordinal) ||
+                   name.EndsWith("FoundScoring", StringComparison.Ordinal) ||
+                   name is "HealFountain" or "MonsterDoor" or "KeyframesCinematic" or "SpawnTheBeast" or
+                       "NunchuckPanIntro" or "PurpleLevelIntro" or "TakeControlCultist" or "ShovelSleep" or
+                       "UnlockBRDoor" or "UnlockCustomBRDoor" or "StaphyRoomCine" or "TailorDaughterCine" or
+                       "TentacleDLC3Cine" or "FirstCastleScreamerMeeting" or "GiantNoise" or
+                       "FlyingSwordCine" or "FlyingSwordJealous";
+        }
+
+        private bool TryGetReadyLocalHero(out dc.pr.Game localGame, out Hero localHero, bool allowInPlaceCine = false)
         {
             localGame = null!;
             localHero = null!;
@@ -1695,7 +1739,7 @@ namespace DeadCellsMultiplayerMod
             if (candidateGame == null || candidateHero == null)
                 return false;
 
-            if (!IsHeroRuntimeReadyForCoop(candidateGame, candidateHero))
+            if (!IsHeroRuntimeReadyForCoop(candidateGame, candidateHero, allowInPlaceCine))
                 return false;
 
             localGame = candidateGame;
@@ -1703,7 +1747,7 @@ namespace DeadCellsMultiplayerMod
             return true;
         }
 
-        private static bool IsHeroRuntimeReadyForCoop(dc.pr.Game localGame, Hero hero)
+        private static bool IsHeroRuntimeReadyForCoop(dc.pr.Game localGame, Hero hero, bool allowInPlaceCine = false)
         {
             try
             {
@@ -1744,7 +1788,8 @@ namespace DeadCellsMultiplayerMod
                 if (cooldown == null || cooldown.fastCheck == null)
                     return false;
 
-                return localGame.curCine == null;
+                var cine = localGame.curCine;
+                return cine == null || (allowInPlaceCine && IsInPlaceCinematic(cine));
             }
             catch
             {

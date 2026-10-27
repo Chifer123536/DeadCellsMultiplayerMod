@@ -88,10 +88,12 @@ public class LevelExitSync :
     private long _lastLocalStateSendTick;
     private bool _suppressDoorActivateHook;
     private string _transitionDoorKey = string.Empty;
+    private long _transitionStartedTicks;
+    private const double ExitTransitionRetrySeconds = 10.0;
     private bool _timerPausedByExit;
     private string _downedExitFollowDoorKey = string.Empty;
     private long _downedExitFollowStartedTicks;
-    private const double DownedExitFollowDelaySeconds = 15.0;
+    private const double DownedExitFollowDelaySeconds = 3.0;
 
     // Protocol 17 Boss Rush launch barrier (non-blocking, polled per frame by the door coordinator).
     private string _bossRushGateDoorKey = string.Empty;
@@ -433,6 +435,14 @@ public class LevelExitSync :
     /// start a second transition. A connected client never falls back to an independent local
     /// transition; it re-announces readiness and waits for the authoritative host commit.
     /// </remarks>
+    private bool IsTransitionInFlight(string doorKey)
+    {
+        return !string.IsNullOrEmpty(doorKey) &&
+               string.Equals(_transitionDoorKey, doorKey, StringComparison.Ordinal) &&
+               _transitionStartedTicks != 0 &&
+               Stopwatch.GetElapsedTime(_transitionStartedTicks).TotalSeconds < ExitTransitionRetrySeconds;
+    }
+
     private bool TryBeginCoordinatedTransition(NetNode net, Entity target, Hero hero)
     {
         if (!net.IsAlive)
@@ -450,17 +460,37 @@ public class LevelExitSync :
             if (target is BossRushDoor && !TryPassBossRushLaunchGate(target))
                 return false;
 
+            var targetDoorKey = BuildDoorKey(target.cx, target.cy);
+            if (IsTransitionInFlight(targetDoorKey))
+                return false;
+
+            if (string.Equals(_transitionDoorKey, targetDoorKey, StringComparison.Ordinal) && _transitionStartedTicks != 0)
+            {
+                _log.Warning(
+                    "[ExitSync] Host transition through door={DoorKey} did not leave the level within {Seconds:F0}s; re-committing",
+                    targetDoorKey,
+                    ExitTransitionRetrySeconds);
+            }
+
             var sequence = ++_nextExitTransitionSequence;
             _lastAppliedExitTransitionSequence = sequence;
             _clientAwaitingCommitSinceTicks = 0;
             try
             {
+                var destination = ResolveExitDestinationLevelId(target);
                 net.SendExitTransitionCommit(
                     sequence,
                     target.cx,
                     target.cy,
                     levelId,
-                    ResolveExitDestinationLevelId(target));
+                    destination);
+                _log.Information(
+                    "[ExitSync] Host committed transition seq={Sequence} door={DoorKey} from={From} to={Dest} hostDowned={Downed}",
+                    sequence,
+                    targetDoorKey,
+                    levelId,
+                    destination,
+                    ModEntry.IsLocalPlayerDowned());
             }
             catch (Exception ex)
             {
@@ -541,6 +571,12 @@ public class LevelExitSync :
             if (hasSelected)
             {
                 var commit = selected;
+                if (IsTransitionInFlight(BuildDoorKey(commit.DoorCx, commit.DoorCy)))
+                {
+                    _lastAppliedExitTransitionSequence = commit.Sequence;
+                    return;
+                }
+
                 var target = FindExitTargetByCoordinates(currentLevel, commit.DoorCx, commit.DoorCy);
                 if (target == null)
                 {
@@ -703,6 +739,9 @@ public class LevelExitSync :
         if (target == null)
             return;
 
+        if (IsTransitionInFlight(candidateKey))
+            return;
+
         if (!string.Equals(_downedExitFollowDoorKey, candidateKey, StringComparison.Ordinal))
         {
             _downedExitFollowDoorKey = candidateKey;
@@ -726,8 +765,8 @@ public class LevelExitSync :
             // the host can authorize and activate this transition.
             if (TryBeginCoordinatedTransition(net, target, hero))
             {
+                _log.Information("[ExitSync] Downed player following teammate through door={DoorKey}", candidateKey);
                 TriggerExitTransition(target, hero, null);
-                _downedExitFollowStartedTicks = 0;
             }
         }
         catch (Exception ex)
@@ -752,6 +791,13 @@ public class LevelExitSync :
             ModEntry.ApplyLocalDownedExitPenaltyIfNeeded();
 
         _transitionDoorKey = BuildDoorKey(target.cx, target.cy);
+        _transitionStartedTicks = Stopwatch.GetTimestamp();
+        _log.Information(
+            "[ExitSync] Exit transition started door={DoorKey} type={Type} role={Role} downed={Downed}",
+            _transitionDoorKey,
+            target.GetType().Name,
+            LobbySession.NetRef?.IsHost == true ? "host" : "client",
+            ModEntry.IsLocalPlayerDowned());
 
         // Arm the level-boundary fence for the whole transition: from this activation until the new
         // level's registry commit, mob sync applies nothing and sends nothing. Every consumer of
@@ -777,7 +823,6 @@ public class LevelExitSync :
         catch (Exception ex)
         {
             _log.Warning("[ExitSync] Failed to trigger level exit transition: {Message}", ex.Message);
-            _transitionDoorKey = string.Empty;
         }
         finally
         {
@@ -1881,6 +1926,7 @@ public class LevelExitSync :
         _lastSentDoorCy = 0;
         _lastSentStateFlags = 0;
         _transitionDoorKey = string.Empty;
+        _transitionStartedTicks = 0;
         // Must reset per level. A stale non-zero value carried into the next biome would already be
         // older than the fallback window, so the client's very first rendezvous there would skip
         // waiting for the host commit entirely and transition on its own.

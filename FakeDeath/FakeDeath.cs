@@ -367,7 +367,10 @@ namespace DeadCellsMultiplayerMod
                             revivedClient = clients[revivedIdx];
 
                         if (_remoteDowned.Remove(state.UserId))
+                        {
                             combatStateChanged = true;
+                            Logger.Information("[NetMod][Death] remote #{UserId} is up again", state.UserId);
+                        }
                         _downedAnnouncements.Remove(state.UserId);
 
                         // Dispose the corpse first: its onDispose restores the visibility state it
@@ -393,6 +396,12 @@ namespace DeadCellsMultiplayerMod
                         };
                         _remoteDowned[state.UserId] = existing;
                         combatStateChanged = true;
+                        Logger.Information(
+                            "[NetMod][Death] remote #{UserId} downed level={LevelId} pos={X:F0},{Y:F0}",
+                            state.UserId,
+                            state.LevelId ?? string.Empty,
+                            state.X,
+                            state.Y);
                     }
 
                     if (_downedAnnouncements.Add(state.UserId))
@@ -483,12 +492,13 @@ namespace DeadCellsMultiplayerMod
                     if (req.TargetId != localId)
                         continue;
 
-                    if (_localDeadCine == null || !_localDeadCine.IsHomunculusNearCorpse(ReviveHomunculusBodyMaxDistancePx))
+                    if (!IsReviverPositionValidForLocalCorpse(net, req.ReviverId, out var rejectReason))
+                    {
+                        Logger.Warning("[NetMod][Revive] rejected request from #{ReviverId}: {Reason}", req.ReviverId, rejectReason);
                         continue;
+                    }
 
-                    if (!IsReviverPositionValidForLocalCorpse(net, req.ReviverId))
-                        continue;
-
+                    Logger.Information("[NetMod][Revive] revived by #{ReviverId} level={LevelId}", req.ReviverId, GetCurrentLevelId());
                     ReviveLocalPlayer(net);
                     return;
                 }
@@ -499,10 +509,14 @@ namespace DeadCellsMultiplayerMod
             }
         }
 
-        private bool IsReviverPositionValidForLocalCorpse(NetNode net, int reviverId)
+        private bool IsReviverPositionValidForLocalCorpse(NetNode net, int reviverId, out string rejectReason)
         {
-            if (net == null || reviverId <= 0 || _localDeadCine == null)
+            rejectReason = string.Empty;
+            if (net == null || reviverId <= 0)
+            {
+                rejectReason = "invalid-reviver";
                 return false;
+            }
 
             // Position validation is intentionally best-effort. A missing snapshot should not make
             // a legitimate revive impossible, but a known cross-level or far-away reviver is rejected.
@@ -514,16 +528,31 @@ namespace DeadCellsMultiplayerMod
                 !string.IsNullOrWhiteSpace(reviverLevelId) &&
                 !string.Equals(localLevelId, reviverLevelId, StringComparison.OrdinalIgnoreCase))
             {
+                rejectReason = $"level-mismatch local={localLevelId} reviver={reviverLevelId}";
                 return false;
             }
 
-            if (!_localDeadCine.TryGetCorpsePixelPosition(out var corpseX, out var corpseY))
+            var corpseX = _localDownedX;
+            var corpseY = _localDownedY;
+            if (_localDeadCine != null && _localDeadCine.TryGetCorpsePixelPosition(out var cineCorpseX, out var cineCorpseY))
+            {
+                corpseX = cineCorpseX;
+                corpseY = cineCorpseY;
+            }
+
+            if (!double.IsFinite(corpseX) || !double.IsFinite(corpseY))
                 return true;
 
             var dx = reviverX - corpseX;
             var dy = reviverY - corpseY;
-            return dx * dx + dy * dy <=
-                   ReviveRemotePositionValidationPx * ReviveRemotePositionValidationPx;
+            var distSq = dx * dx + dy * dy;
+            if (distSq <= ReviveRemotePositionValidationPx * ReviveRemotePositionValidationPx)
+                return true;
+
+            rejectReason = string.Create(
+                CultureInfo.InvariantCulture,
+                $"too-far dist={System.Math.Sqrt(distSq):F0}px max={ReviveRemotePositionValidationPx:F0}px");
+            return false;
         }
 
         private void PruneRemoteDownedStates(NetNode net)
@@ -705,6 +734,12 @@ namespace DeadCellsMultiplayerMod
                 _localDownedAnchorY = _localDownedY;
                 _hasLocalDownedAnchor = true;
                 _localDownedLevelId = GetCurrentLevelId();
+                Logger.Information(
+                    "[NetMod][Death] local player downed level={LevelId} pos={X:F0},{Y:F0} aliveTeammate={Alive}",
+                    _localDownedLevelId,
+                    _localDownedX,
+                    _localDownedY,
+                    HasAliveRemoteTeammate(net));
                 _nextDownedStateSendTicks = 0;
                 _nextReviveAttemptTicks = 0;
                 _postReviveLockUntilTicks = 0;
@@ -1009,10 +1044,14 @@ namespace DeadCellsMultiplayerMod
 
             if (!TryConsumeOneFlask(me))
             {
+                Logger.Information("[NetMod][Revive] cannot revive #{TargetId}: no flask charges", nearest.UserId);
+                MultiplayerUI.PushSystemMessage(Localize("You need a health flask charge to revive."), 4.0, 1.0);
+                _nextReviveAttemptTicks = now + (long)(Stopwatch.Frequency * 1.5);
                 ResetReviveHold();
                 return;
             }
 
+            Logger.Information("[NetMod][Revive] sent revive request to #{TargetId} level={LevelId}", nearest.UserId, GetCurrentLevelId());
             net.SendPlayerReviveRequest(nearest.UserId);
             _nextReviveAttemptTicks = now + (long)(Stopwatch.Frequency * ReviveAttemptCooldownSeconds);
             ResetReviveHold();
@@ -1065,16 +1104,6 @@ namespace DeadCellsMultiplayerMod
                 var distSq = dx * dx + dy * dy;
                 if (distSq > ReviveUseDistancePx * ReviveUseDistancePx)
                     continue;
-
-                if (state.HasHeadPosition)
-                {
-                    var hdx = state.HeadX - state.X;
-                    var hdy = state.HeadY - state.Y;
-                    var headBodyDistSq = hdx * hdx + hdy * hdy;
-                    var maxHeadBodySq = ReviveHomunculusBodyMaxDistancePx * ReviveHomunculusBodyMaxDistancePx * 16.0;
-                    if (headBodyDistSq > maxHeadBodySq)
-                        continue;
-                }
 
                 if (distSq < bestDistSq)
                 {
@@ -1283,6 +1312,7 @@ namespace DeadCellsMultiplayerMod
                 // the game/cinematic scheduler and leave the client permanently Not Responding.
                 // Keep the presentation lightweight; the authoritative host queues the restart.
                 try { MultiplayerUI.PushSystemMessage("All players are down."); } catch { }
+                Logger.Information("[NetMod][Death] all players down role={Role} level={LevelId}", _netRole, GetCurrentLevelId());
                 _allDownedGameOverShown = true;
                 _allDownedRestartAtTicks = now + (long)(Stopwatch.Frequency * AllDownedGameOverDelaySeconds);
             }

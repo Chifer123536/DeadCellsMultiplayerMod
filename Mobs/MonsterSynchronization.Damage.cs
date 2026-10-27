@@ -57,8 +57,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 preSyncOk = TryGetMobSyncId(self, out cachedMobSyncId);
             }
 
-            // Read the attack's construction input before vanilla resolves the hit: resolution
-            // rewrites the per-target damage fields, and AttackData instances are recycled.
+            // finalDmg is already resolved for this target (applyAttackResult runs before onDamage);
+            // read it before orig because AttackData instances are recycled.
             var attackIntentDamage = ReadAttackIntentDamage(i);
 
             orig(self, i);

@@ -35,6 +35,10 @@ public sealed class MultiplayerSettingsData
 
     public bool SyncVerticalPosition { get; set; } = false;
 
+    public bool SteamAchievements { get; set; } = true;
+
+    public bool ShareAchievements { get; set; } = true;
+
     public int CoopDlcPreferenceMask { get; set; } = 0x1F;
 
     public string ModLanguage { get; set; } = MultiplayerSettingsStorage.ModLanguageAuto;
@@ -244,6 +248,48 @@ public static class MultiplayerSettingsStorage
                     return;
 
                 data.ScrollChoiceMode = normalized;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static bool SteamAchievements
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().SteamAchievements;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var data = EnsureDataNormalizedUnsafe();
+                if (data.SteamAchievements == value)
+                    return;
+
+                data.SteamAchievements = value;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static bool ShareAchievements
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().ShareAchievements;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var data = EnsureDataNormalizedUnsafe();
+                if (data.ShareAchievements == value)
+                    return;
+
+                data.ShareAchievements = value;
                 SaveUnsafe();
             }
         }

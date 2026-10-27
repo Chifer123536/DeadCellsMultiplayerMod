@@ -190,6 +190,12 @@ namespace DeadCellsMultiplayerMod
             if (hero == null || level == null || level.map == null)
                 return;
 
+            if (!IsLiveRunLevel(hero, level))
+            {
+                _log?.Information("[NetMod] Skipping level reload for {LevelId}: no live run level (menu/loading)", graphLevelId);
+                return;
+            }
+
             var currentLevelId = level.map.id?.ToString();
             if (!string.Equals(currentLevelId, graphLevelId, StringComparison.Ordinal))
                 return;
@@ -274,6 +280,27 @@ namespace DeadCellsMultiplayerMod
                     targetLevelId,
                     offsetCx,
                     offsetCy);
+            }
+        }
+
+        private static bool IsLiveRunLevel(Hero hero, Level level)
+        {
+            try
+            {
+                var game = dc.pr.Game.Class.ME;
+                if (game == null || game.destroyed || game.curCine != null)
+                    return false;
+                if (!ReferenceEquals(game.hero, hero) || !ReferenceEquals(game.curLevel, level))
+                    return false;
+                if (hero.destroyed || !hero.initDone || hero.cd?.fastCheck == null)
+                    return false;
+                if (LobbySession.IsClientRestartPending())
+                    return false;
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 

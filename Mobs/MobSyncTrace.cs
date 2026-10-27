@@ -969,6 +969,10 @@ internal static class MobSyncTrace
             role ?? string.Empty);
     }
 
+    private static readonly object s_resolveFailLogLock = new();
+    private static readonly HashSet<long> s_resolveFailLogged = new();
+    private const int ResolveFailLogDedupeCap = 4096;
+
     public static void LogResolveFail(
         int syncId,
         bool hasIdToMob,
@@ -977,6 +981,18 @@ internal static class MobSyncTrace
         int generation,
         string reason)
     {
+        if (!Enabled)
+        {
+            var key = ((long)generation << 32) | (uint)syncId;
+            lock (s_resolveFailLogLock)
+            {
+                if (s_resolveFailLogged.Count >= ResolveFailLogDedupeCap)
+                    s_resolveFailLogged.Clear();
+                if (!s_resolveFailLogged.Add(key))
+                    return;
+            }
+        }
+
         Log.Information(
             "[MobSync] RESOLVE_FAIL syncId={SyncId} hasIdToMob={HasIdToMob} hasMobToId={HasMobToId} destroyed={Destroyed} generation={Generation} reason={Reason}",
             syncId,

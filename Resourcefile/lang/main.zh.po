@@ -25,11 +25,11 @@ msgstr "合作模式：已连接到主机"
 msgid "Co-op progression synced: +{0} unlock(s)"
 msgstr "合作进度已同步：+{0} 项解锁"
 
-#: FakeDeath/FakeDeath.cs:1339
+#: FakeDeath/FakeDeath.cs:1369
 msgid "Game Over"
 msgstr "游戏结束"
 
-#: FakeDeath/FakeDeath.cs:440
+#: FakeDeath/FakeDeath.cs:449
 msgid "{0} fell!"
 msgstr "{0} 倒下了！"
 
@@ -137,113 +137,53 @@ msgstr "存档：槽位 {0}"
 msgid "Copy your save in that slot"
 msgstr "将存档复制到该槽位"
 
-#: UI/LevelExitSync.cs:1120
+#: UI/LevelExitSync.cs:1165
 msgid "{0} reached the exit to {1}"
 msgstr "{0} 已到达通往 {1} 的出口"
 
-#: UI/LevelExitSync.cs:1126
+#: UI/LevelExitSync.cs:1171
 msgid "next area"
 msgstr "下一张地图"
 
-#: UI/LevelExitSync.cs:1179
+#: UI/LevelExitSync.cs:1224
 msgid "Player {0}"
 msgstr "玩家 {0}"
 
-#: UI/SettingsUI.cs:318
-msgid "Enable mobs sync"
-msgstr "启用怪物同步"
+#: UI/SettingsUI.cs:295
+msgid "Debug"
+msgstr "调试"
 
-#: UI/SettingsUI.cs:332
-msgid "Mobs HP multiplier"
-msgstr "小怪生命值倍率"
-
-#: UI/SettingsUI.cs:352
-msgid "Bosses HP multiplier"
-msgstr "Boss 生命值倍率"
-
-#: UI/SettingsUI.cs:386
-msgid "Sync vertical position"
-msgstr "同步垂直位置"
-
-#: UI/SettingsUI.cs:387
-msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-msgstr "将主机的垂直位置应用于受重力影响的怪物。关闭：步行怪仅同步 X；飞行怪仍会同步 Y。开启：可减少不同步，但可能使地面怪瞬移。"
-
-#: UI/SettingsUI.cs:399
-msgid "Module: language"
-msgstr "模块：语言"
-
-#: UI/SettingsUI.cs:400
-msgid "Module: cinematics hooks"
-msgstr "模块：剧情动画钩子"
-
-#: UI/SettingsUI.cs:401
-msgid "Module: multiplayer UI"
-msgstr "模块：多人 UI"
-
-#: UI/SettingsUI.cs:402
-msgid "Module: level init"
-msgstr "模块：关卡初始化"
-
-#: UI/SettingsUI.cs:403
-msgid "Module: mobs sync"
-msgstr "模块：怪物同步"
-
-#: UI/SettingsUI.cs:404
-msgid "Module: minimap reveal"
-msgstr "模块：地图全开"
-
-#: UI/SettingsUI.cs:405
-msgid "Module: level exit sync"
-msgstr "模块：出口同步"
-
-#: UI/SettingsUI.cs:406
-msgid "Module: interaction sync"
-msgstr "模块：交互同步"
-
-#: UI/SettingsUI.cs:407
-msgid "Module: connection UI"
-msgstr "模块：连接 UI"
-
-#: UI/SettingsUI.cs:408
-msgid "Module"
-msgstr "模块"
-
-#: UI/SettingsUI.cs:432
+#: UI/SettingsUI.cs:297
 msgid "Player immortal"
 msgstr "玩家无敌"
 
-#: UI/SettingsUI.cs:440
+#: UI/SettingsUI.cs:301
 msgid "Use Explorer's Rune"
 msgstr "使用探险家符文"
 
-#: UI/SettingsUI.cs:448
-msgid "Mobs sync trace logging"
-msgstr "怪物同步跟踪日志"
-
-#: UI/SettingsUI.cs:476
+#: UI/SettingsUI.cs:306
 msgid "Start perk"
 msgstr "起始变异"
 
-#: UI/SettingsUI.cs:483
-msgid "Previous perk"
-msgstr "上一个变异"
+#: UI/SettingsUI.cs:312
+msgid "Enable mobs sync"
+msgstr "启用怪物同步"
 
-#: UI/SettingsUI.cs:490
-msgid "Next perk"
-msgstr "下一个变异"
+#: UI/SettingsUI.cs:316
+msgid "Sync vertical position"
+msgstr "同步垂直位置"
 
-#: UI/SettingsUI.cs:86
+#: UI/SettingsUI.cs:317
+msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+msgstr "将主机的垂直位置应用于受重力影响的怪物。关闭：步行怪仅同步 X；飞行怪仍会同步 Y。开启：可减少不同步，但可能使地面怪瞬移。"
+
+#: UI/SettingsUI.cs:321
+msgid "Mobs sync trace logging"
+msgstr "怪物同步跟踪日志"
+
+#: UI/SettingsUI.cs:73
 msgid "Multiplayer settings"
 msgstr "多人游戏设置"
-
-#: dynamic
-msgid "Mobs settings"
-msgstr "怪物设置"
-
-#: dynamic
-msgid "Debug"
-msgstr "调试"
 
 #: dynamic
 msgid "Hold to revive."

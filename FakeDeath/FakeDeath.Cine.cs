@@ -444,12 +444,17 @@ namespace DeadCellsMultiplayerMod
             if (_localDeadCine != null)
                 return;
 
+            var activeCine = string.Empty;
+            try { activeCine = dc.pr.Game.Class.ME?.curCine?.GetType().Name ?? string.Empty; } catch { }
+            Logger.Information("[NetMod][Death] creating local corpse cine activeCine={ActiveCine}", activeCine);
             try
             {
                 _localDeadCine = new DeadBase(hero, ModEntry.GetPrimaryClient());
+                Logger.Information("[NetMod][Death] local corpse cine created");
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.Warning("[NetMod][Death] local corpse cine failed: {Message}", ex.Message);
                 _localDeadCine = null;
             }
         }

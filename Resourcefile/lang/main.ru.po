@@ -29,15 +29,19 @@ msgstr "Прогресс кооператива синхронизирован: 
 msgid "you"
 msgstr "вас"
 
-#: Emotes/EmoteWheel.cs:86
+#: Emotes/EmoteWheel.cs:93
 msgid "Emotes"
 msgstr "Эмоции"
 
-#: FakeDeath/FakeDeath.cs:1339
+#: FakeDeath/FakeDeath.cs:1048
+msgid "You need a health flask charge to revive."
+msgstr "Для воскрешения нужен заряд фляги."
+
+#: FakeDeath/FakeDeath.cs:1369
 msgid "Game Over"
 msgstr "Игра окончена"
 
-#: FakeDeath/FakeDeath.cs:440
+#: FakeDeath/FakeDeath.cs:449
 msgid "{0} fell!"
 msgstr "{0} пал!"
 
@@ -541,177 +545,165 @@ msgstr "Обычный режим"
 msgid "Host cancelled the co-op run launch."
 msgstr "Хост отменил запуск забега."
 
-#: UI/LevelExitSync.cs:1120
+#: UI/LevelExitSync.cs:1165
 msgid "{0} reached the exit to {1}"
 msgstr "{0} добрался до выхода в {1}"
 
-#: UI/LevelExitSync.cs:1126
+#: UI/LevelExitSync.cs:1171
 msgid "next area"
 msgstr "следующую локацию"
 
-#: UI/LevelExitSync.cs:1155
+#: UI/LevelExitSync.cs:1200
 msgid "Boss Rush"
 msgstr "Босс-раш"
 
-#: UI/LevelExitSync.cs:1179
+#: UI/LevelExitSync.cs:1224
 msgid "Player {0}"
 msgstr "Игрок {0}"
 
-#: UI/LevelExitSync.cs:319
+#: UI/LevelExitSync.cs:321
 msgid "The exit stays sealed until the boss falls."
 msgstr "Выход закрыт, пока босс жив."
 
-#: UI/LevelExitSync.cs:663
+#: UI/LevelExitSync.cs:699
 msgid "Still waiting for your friend at this exit."
 msgstr "Ждём друга у этого выхода."
 
-#: UI/LevelExitSync.cs:711
+#: UI/LevelExitSync.cs:750
 msgid "Teammate reached the exit. Following in {0} seconds..."
 msgstr "Напарник дошёл до выхода. Переход через {0} с..."
 
-#: UI/LevelExitSync.cs:856
+#: UI/LevelExitSync.cs:901
 msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 msgstr "Босс-раш не синхронизировался с другом. Подойдите к двери ещё раз."
 
-#: UI/SettingsUI.cs:217
-msgid "Mod language"
-msgstr "Язык мода"
-
-#: UI/SettingsUI.cs:218
-msgid "Language of the co-op menus. \"As in game\" follows the game language."
-msgstr "Язык меню кооператива. «Как в игре» — тот же, что у игры."
-
-#: UI/SettingsUI.cs:243
-msgid "Scroll pick"
-msgstr "Выбор свитка"
-
-#: UI/SettingsUI.cs:244
-msgid "What happens for everyone while a player picks a scroll. Set by the host."
-msgstr "Что происходит у всех, пока игрок выбирает свиток. Выбирает хост."
-
-#: UI/SettingsUI.cs:307
-msgid "Co-op difficulty"
-msgstr "Сложность кооператива"
-
-#: UI/SettingsUI.cs:308
-msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
-msgstr "Здоровье мобов и боссов и урон мобов растут с числом игроков. Выбирает хост."
-
-#: UI/SettingsUI.cs:318
-msgid "Enable mobs sync"
-msgstr "Включить синхронизацию мобов"
-
-#: UI/SettingsUI.cs:332
-msgid "Mobs HP multiplier"
-msgstr "Множитель HP мобов"
-
-#: UI/SettingsUI.cs:352
-msgid "Bosses HP multiplier"
-msgstr "Множитель HP боссов"
-
-#: UI/SettingsUI.cs:372
-msgid "Mobs damage multiplier"
-msgstr "Множитель урона мобов"
-
-#: UI/SettingsUI.cs:386
-msgid "Sync vertical position"
-msgstr "Синхронизировать вертикальную позицию"
-
-#: UI/SettingsUI.cs:387
-msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-msgstr "Применяет вертикальную позицию хоста к мобам под гравитацией. Выкл.: для ходячих только X; летающие по-прежнему синхронизируют Y. Вкл.: меньше рассинхрона, но наземные мобы могут дёргаться."
-
-#: UI/SettingsUI.cs:399
-msgid "Module: language"
-msgstr "Модуль: язык"
-
-#: UI/SettingsUI.cs:400
-msgid "Module: cinematics hooks"
-msgstr "Модуль: кат-сцены"
-
-#: UI/SettingsUI.cs:401
-msgid "Module: multiplayer UI"
-msgstr "Модуль: UI мультиплеера"
-
-#: UI/SettingsUI.cs:402
-msgid "Module: level init"
-msgstr "Модуль: инициализация уровня"
-
-#: UI/SettingsUI.cs:403
-msgid "Module: mobs sync"
-msgstr "Модуль: синхронизация мобов"
-
-#: UI/SettingsUI.cs:404
-msgid "Module: minimap reveal"
-msgstr "Модуль: раскрытие миникарты"
-
-#: UI/SettingsUI.cs:405
-msgid "Module: level exit sync"
-msgstr "Модуль: синхронизация выходов"
-
-#: UI/SettingsUI.cs:406
-msgid "Module: interaction sync"
-msgstr "Модуль: синхронизация взаимодействий"
-
-#: UI/SettingsUI.cs:407
-msgid "Module: connection UI"
-msgstr "Модуль: UI подключения"
-
-#: UI/SettingsUI.cs:408
-msgid "Module"
-msgstr "Модуль"
-
-#: UI/SettingsUI.cs:432
-msgid "Player immortal"
-msgstr "Бессмертие игрока"
-
-#: UI/SettingsUI.cs:440
-msgid "Use Explorer's Rune"
-msgstr "Руна следопыта"
-
-#: UI/SettingsUI.cs:448
-msgid "Mobs sync trace logging"
-msgstr "Журнал трассировки синхронизации мобов"
-
-#: UI/SettingsUI.cs:456
-msgid "Boss sync trace logging"
-msgstr "Трассировка синхронизации боссов"
-
-#: UI/SettingsUI.cs:464
-msgid "Show perf logs"
-msgstr "Логи производительности"
-
-#: UI/SettingsUI.cs:465
-msgid "Controls threshold-based [Perf] hitch and slowdown logging."
-msgstr "Запись подвисаний и замедлений [Perf] в лог."
-
-#: UI/SettingsUI.cs:476
-msgid "Start perk"
-msgstr "Стартовый перк"
-
-#: UI/SettingsUI.cs:483
-msgid "Previous perk"
-msgstr "Предыдущий перк"
-
-#: UI/SettingsUI.cs:490
-msgid "Next perk"
-msgstr "Следующий перк"
-
-#: UI/SettingsUI.cs:86
-msgid "Multiplayer settings"
-msgstr "Настройки мультиплеера"
-
-#: dynamic
+#: UI/SettingsUI.cs:188
 msgid "General"
 msgstr "Общие"
 
-#: dynamic
-msgid "Mobs settings"
-msgstr "Настройки мобов"
+#: UI/SettingsUI.cs:201
+msgid "Mod language"
+msgstr "Язык мода"
 
-#: dynamic
+#: UI/SettingsUI.cs:202
+msgid "Language of the co-op menus. \"As in game\" follows the game language."
+msgstr "Язык меню кооператива. «Как в игре» — тот же, что у игры."
+
+#: UI/SettingsUI.cs:208
+msgid "Host settings"
+msgstr "Настройки хоста"
+
+#: UI/SettingsUI.cs:221
+msgid "Co-op difficulty"
+msgstr "Сложность кооператива"
+
+#: UI/SettingsUI.cs:222
+msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
+msgstr "Здоровье мобов и боссов и урон мобов растут с числом игроков. Выбирает хост."
+
+#: UI/SettingsUI.cs:225
+msgid "Mob health"
+msgstr "Здоровье мобов"
+
+#: UI/SettingsUI.cs:231
+msgid "Boss health"
+msgstr "Здоровье боссов"
+
+#: UI/SettingsUI.cs:237
+msgid "Mob damage"
+msgstr "Урон мобов"
+
+#: UI/SettingsUI.cs:254
+msgid "Scroll pick"
+msgstr "Выбор свитка"
+
+#: UI/SettingsUI.cs:255
+msgid "What happens for everyone while a player picks a scroll. Set by the host."
+msgstr "Что происходит у всех, пока игрок выбирает свиток. Выбирает хост."
+
+#: UI/SettingsUI.cs:265
+msgid "Achievements"
+msgstr "Достижения"
+
+#: UI/SettingsUI.cs:268
+msgid "Steam achievements"
+msgstr "Достижения Steam"
+
+#: UI/SettingsUI.cs:269
+msgid "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
+msgstr "Открывать достижения Steam при игре с модом. После включения отладочных читов — выключено до перезапуска игры."
+
+#: UI/SettingsUI.cs:274
+msgid "Shared achievements"
+msgstr "Общие достижения"
+
+#: UI/SettingsUI.cs:275
+msgid "Also unlock the achievements your teammates get. They need the same mod version."
+msgstr "Получать и достижения, которые открыли напарники. У них должна стоять та же версия мода."
+
+#: UI/SettingsUI.cs:282
+msgid "Controls"
+msgstr "Управление"
+
+#: UI/SettingsUI.cs:286
+msgid "Emote wheel: hold T or L3"
+msgstr "Колесо эмоций: держать T или L3"
+
+#: UI/SettingsUI.cs:287
+msgid "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
+msgstr "Нажмите левый стик, не наклоняя его, выберите правым стиком или мышью и отпустите."
+
+#: UI/SettingsUI.cs:295
 msgid "Debug"
 msgstr "Отладка"
+
+#: UI/SettingsUI.cs:297
+msgid "Player immortal"
+msgstr "Бессмертие игрока"
+
+#: UI/SettingsUI.cs:301
+msgid "Use Explorer's Rune"
+msgstr "Руна следопыта"
+
+#: UI/SettingsUI.cs:306
+msgid "Start perk"
+msgstr "Стартовый перк"
+
+#: UI/SettingsUI.cs:312
+msgid "Enable mobs sync"
+msgstr "Включить синхронизацию мобов"
+
+#: UI/SettingsUI.cs:316
+msgid "Sync vertical position"
+msgstr "Синхронизировать вертикальную позицию"
+
+#: UI/SettingsUI.cs:317
+msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+msgstr "Применяет вертикальную позицию хоста к мобам под гравитацией. Выкл.: для ходячих только X; летающие по-прежнему синхронизируют Y. Вкл.: меньше рассинхрона, но наземные мобы могут дёргаться."
+
+#: UI/SettingsUI.cs:321
+msgid "Mobs sync trace logging"
+msgstr "Журнал трассировки синхронизации мобов"
+
+#: UI/SettingsUI.cs:325
+msgid "Boss sync trace logging"
+msgstr "Трассировка синхронизации боссов"
+
+#: UI/SettingsUI.cs:329
+msgid "Show perf logs"
+msgstr "Логи производительности"
+
+#: UI/SettingsUI.cs:330
+msgid "Controls threshold-based [Perf] hitch and slowdown logging."
+msgstr "Запись подвисаний и замедлений [Perf] в лог."
+
+#: UI/SettingsUI.cs:374
+msgid "Extra multiplier on top of co-op difficulty. Set by the host."
+msgstr "Дополнительный множитель поверх кооп-сложности. Задаёт хост."
+
+#: UI/SettingsUI.cs:73
+msgid "Multiplayer settings"
+msgstr "Настройки мультиплеера"
 
 #: dynamic
 msgid "Hold to revive."

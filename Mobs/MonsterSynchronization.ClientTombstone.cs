@@ -243,10 +243,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
         private static void LogFocusUnregisterWithoutMappingLocked(Mob? mob)
         {
-            var syncId = ClientFocusDesyncSyncId;
             if (mob != null && MobToId.TryGetValue(mob, out var mapped) && mapped > 0)
-                syncId = mapped;
-            LogFocusSyncLifecycleLocked(syncId, "UNREGISTER_NO_MAPPING", "mobtoid_missing");
+                LogFocusSyncLifecycleLocked(mapped, "UNREGISTER_NO_MAPPING", "mobtoid_missing");
         }
 
         private static void LogFocusSyncLifecycleLocked(int syncId, string evt, string detail)
