@@ -7,7 +7,7 @@ namespace DeadCellsMultiplayerMod;
 internal static class BuildInfo
 {
     public const string Version = "0.8.91-coop.5";
-    public const string SourceMarker = "v0.8.91-coop.5-p23";
+    public const string SourceMarker = "v0.8.91-coop.5-p24";
     // Protocol 19: launch convergence, level-boundary identity, sequenced level seeds and ordered player positions.
     //   * The host re-publishes the full launch prerequisite set (GEN/CGDATA/RUNCOMMIT/SEED/
     //     RUNEXEC) until the client confirms, and GEN is host-cached and replayed to late joiners.
@@ -42,6 +42,10 @@ internal static class BuildInfo
     //   * The client hit report (hit|life|damage) carries the damage its replica actually took
     //     (AttackData.finalDmg); the host applies exactly that. Protocol 22 sent the pre-scaling
     //     base damage and the host rescaled it with its own hero.
+    // Protocol 24 (coop fork):
+    //   * PDOWN state 2 = dead until the next passage (one revive per level); protocol 23 rejects it.
+    //   * RVHOLD / RVDONE share revive progress and confirm a revive; the reviver spends the flask
+    //     only on RVDONE.
     // These change how peers interpret the same exchange, so cross-version pairing is rejected.
-    public const int NetworkProtocolVersion = 23;
+    public const int NetworkProtocolVersion = 24;
 }

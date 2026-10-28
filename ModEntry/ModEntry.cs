@@ -198,7 +198,7 @@ namespace DeadCellsMultiplayerMod
         private long _reviveHoldStartedTicks;
         private const double ReviveUseDistancePx = 64.0;
         private const double ReviveAttemptCooldownSeconds = 0.2;
-        private const double ReviveHoldSeconds = 0.7;
+        private const double ReviveHoldSeconds = 1.5;
         private const double ReviveRemotePositionValidationPx = 192.0;
         private const double RemoteDownedStateStaleSeconds = 6.0;
         private const double DownedStateResendSeconds = 0.4;
@@ -206,7 +206,6 @@ namespace DeadCellsMultiplayerMod
         private const double DownedGhostBodyYOffsetPx = 40.0;
         private const double LocalReviveBodyYOffsetPx = 0.5;
         private const double PostRevivePositionLockSeconds = 0.0;
-        private const string ReviveHintText = "Hold to revive.";
         private string _lastDoorMarkerLevelId = string.Empty;
         private int _lastDoorMarkerToken = int.MinValue;
         private string _localLastDoorMarkerLevelId = string.Empty;
@@ -224,6 +223,9 @@ namespace DeadCellsMultiplayerMod
             public string HeadAnim = string.Empty;
             public string LevelId = string.Empty;
             public long UpdatedAtTicks;
+            public bool IsDead;
+            public int HoldReviverId;
+            public long HoldStartedTicks;
         }
 
         private sealed class RemoteDoorMarkerState
@@ -1351,6 +1353,8 @@ namespace DeadCellsMultiplayerMod
             _appliedBossHeroTeleportLevels.Clear();
             _lastBossCineSentLevelId = null;
             _lastBossCineSentTick = 0;
+            var wasDownedBeforeLevelChange = _localFakeDead;
+            var wasDeadBeforeLevelChange = _localFakeDead && _localDeadForLevel;
             ResetFakeDeathState(unlockLocalHero: true, sendNetworkUpState: false, clearRemoteDownedTracking: false, clearDownedAnnouncements: false);
             me = self;
             me._targetable = true;
@@ -1361,6 +1365,7 @@ namespace DeadCellsMultiplayerMod
                 SendLevel(currentLevelId);
             // A mid-run joiner's first level is where the host-approved spawn applies.
             ArmJoinSpawnForCurrentLevel(currentLevelId);
+            UpdateReviveBudgetAfterLevelChange(self, currentLevelId, wasDownedBeforeLevelChange, wasDeadBeforeLevelChange);
             SendCurrentRoomTarget(force: true);
             // Do not clear again after vanilla onLevelChanged: by this point the host may already
             // have sent the first valid bootstrap chunks for the new level. Generation fencing

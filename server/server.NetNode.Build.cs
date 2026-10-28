@@ -1,5 +1,6 @@
 using System.Globalization;
 using DeadCellsMultiplayerMod.Network;
+using DeadCellsMultiplayerMod.PortableCore;
 
 
 public sealed partial class NetNode
@@ -134,17 +135,17 @@ public sealed partial class NetNode
             {
                 return string.Create(
                     CultureInfo.InvariantCulture,
-                    $"PDOWN|{state.UserId}|{(state.IsDowned ? 1 : 0)}|{state.X}|{state.Y}|{safeLevelId}|{state.HeadX}|{state.HeadY}|{safeHeadAnim}\n");
+                    $"PDOWN|{state.UserId}|{ReviveWire.ToCode(ReviveWire.FromFlags(state.IsDowned, state.IsDead))}|{state.X}|{state.Y}|{safeLevelId}|{state.HeadX}|{state.HeadY}|{safeHeadAnim}\n");
             }
 
             return string.Create(
                 CultureInfo.InvariantCulture,
-                $"PDOWN|{state.UserId}|{(state.IsDowned ? 1 : 0)}|{state.X}|{state.Y}|{safeLevelId}|{state.HeadX}|{state.HeadY}\n");
+                $"PDOWN|{state.UserId}|{ReviveWire.ToCode(ReviveWire.FromFlags(state.IsDowned, state.IsDead))}|{state.X}|{state.Y}|{safeLevelId}|{state.HeadX}|{state.HeadY}\n");
         }
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"PDOWN|{state.UserId}|{(state.IsDowned ? 1 : 0)}|{state.X}|{state.Y}|{safeLevelId}\n");
+            $"PDOWN|{state.UserId}|{ReviveWire.ToCode(ReviveWire.FromFlags(state.IsDowned, state.IsDead))}|{state.X}|{state.Y}|{safeLevelId}\n");
     }
 
     private static string BuildPlayerReviveLine(PlayerReviveRequest request)

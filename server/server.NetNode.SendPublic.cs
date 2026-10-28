@@ -802,7 +802,7 @@ public sealed partial class NetNode
         _log.Information("[NetNode] Sent hero death");
     }
 
-    public void SendPlayerDownState(bool isDowned, double x, double y, string? levelId, double? headX = null, double? headY = null, string? headAnim = null)
+    public void SendPlayerDownState(bool isDowned, double x, double y, string? levelId, double? headX = null, double? headY = null, string? headAnim = null, bool isDead = false)
     {
         if (!HasAnyConnection())
             return;
@@ -811,7 +811,7 @@ public sealed partial class NetNode
 
         var hasHead = isDowned && headX.HasValue && headY.HasValue;
         var hasAnim = hasHead && !string.IsNullOrWhiteSpace(headAnim);
-        var state = new PlayerDownState(ID, isDowned, x, y, levelId ?? string.Empty, hasHead, headX ?? 0, headY ?? 0, hasAnim, headAnim);
+        var state = new PlayerDownState(ID, isDowned, x, y, levelId ?? string.Empty, hasHead, headX ?? 0, headY ?? 0, hasAnim, headAnim, isDead);
         var line = BuildPlayerDownLine(state);
         _ = SendLineSafe(line);
     }

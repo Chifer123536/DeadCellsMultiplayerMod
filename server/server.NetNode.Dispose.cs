@@ -125,6 +125,8 @@ public sealed partial class NetNode
             _pendingBossHeroTeleports.Clear();
             _pendingPlayerDownStates.Clear();
             _pendingPlayerReviveRequests.Clear();
+            _pendingReviveHolds.Clear();
+            _pendingReviveDones.Clear();
             _pendingInterDoorEvents.Clear();
             _pendingInterElevatorEvents.Clear();
             _pendingInterElevatorStateEvents.Clear();

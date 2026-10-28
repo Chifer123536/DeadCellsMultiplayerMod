@@ -23,15 +23,15 @@ msgstr "Cooperativo: conectado al anfitrión"
 msgid "Co-op progression synced: +{0} unlock(s)"
 msgstr "Progreso cooperativo sincronizado: +{0} desbloqueo(s)"
 
-#: FakeDeath/FakeDeath.cs:1369
+#: FakeDeath/FakeDeath.cs:1335
 msgid "Game Over"
 msgstr "Fin del juego"
 
-#: FakeDeath/FakeDeath.cs:449
+#: FakeDeath/FakeDeath.cs:481
 msgid "{0} fell!"
 msgstr "¡{0} cayó!"
 
-#: ModEntry/ModEntry.cs:1195
+#: ModEntry/ModEntry.cs:1197
 msgid "Level failed to synchronize with the host. Return to the menu and rejoin."
 msgstr "No se pudo sincronizar el nivel con el anfitrión. Vuelve al menú y únete de nuevo."
 
@@ -146,7 +146,3 @@ msgstr "Registro de trazas de sincronización de enemigos"
 #: UI/SettingsUI.cs:73
 msgid "Multiplayer settings"
 msgstr "Configuración multijugador"
-
-#: dynamic
-msgid "Hold to revive."
-msgstr "Mantén para revivir."

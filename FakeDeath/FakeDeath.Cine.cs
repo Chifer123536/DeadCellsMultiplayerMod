@@ -189,6 +189,7 @@ namespace DeadCellsMultiplayerMod
 
                 if (cine != null)
                 {
+                    try { cine.SetDead(state.IsDead); } catch { }
                     try
                     {
                         cine.UpdateTarget(
@@ -399,7 +400,7 @@ namespace DeadCellsMultiplayerMod
                 DisposeRemoteDownedCine(_scratchStaleCorpseIds[i]);
         }
 
-        private void ShowReviveHintFor(int userId)
+        private void ShowReviveHintFor(int userId, bool dead)
         {
             if (_remoteDownedCines.Count == 0)
                 return;
@@ -412,10 +413,12 @@ namespace DeadCellsMultiplayerMod
 
                 try
                 {
-                    if (pair.Key == userId)
-                        cine.SetInteractionLabel(Localize(ReviveHintText));
-                    else
+                    if (pair.Key != userId)
                         cine.SetInteractionLabel(null);
+                    else if (dead)
+                        cine.SetInteractionLabel(Localize("Back at the next passage"), actionable: false);
+                    else
+                        cine.SetInteractionLabel(Localize("Revive"), actionable: true);
                 }
                 catch
                 {

@@ -24,6 +24,8 @@ public sealed partial class NetNode
             _pendingBossHeroTeleports.Clear();
             _pendingPlayerDownStates.Clear();
             _pendingPlayerReviveRequests.Clear();
+            _pendingReviveHolds.Clear();
+            _pendingReviveDones.Clear();
             _pendingInterDoorEvents.Clear();
             _pendingInterElevatorEvents.Clear();
             _pendingInterElevatorStateEvents.Clear();
@@ -84,6 +86,7 @@ public sealed partial class NetNode
         _pendingExitReadyStates.RemoveAll(s => s.UserId == userId);
         _pendingPlayerDownStates.RemoveAll(s => s.UserId == userId);
         _pendingPlayerReviveRequests.RemoveAll(s => s.ReviverId == userId || s.TargetId == userId);
+        RemovePendingReviveMessagesForUser(userId);
     }
 
     private static int? ResolvePayloadId(string payload, int? senderId, out string cleanedPayload)

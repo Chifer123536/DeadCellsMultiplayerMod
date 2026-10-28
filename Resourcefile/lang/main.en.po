@@ -33,17 +33,53 @@ msgstr "you"
 msgid "Emotes"
 msgstr "Emotes"
 
-#: FakeDeath/FakeDeath.cs:1048
+#: FakeDeath/FakeDeath.Cine.cs:419
+msgid "Back at the next passage"
+msgstr "Back at the next passage"
+
+#: FakeDeath/FakeDeath.Cine.cs:421
+msgid "Revive"
+msgstr "Revive"
+
+#: FakeDeath/FakeDeath.Revive.cs:113
+msgid "You are back in the fight."
+msgstr "You are back in the fight."
+
+#: FakeDeath/FakeDeath.Revive.cs:251
 msgid "You need a health flask charge to revive."
 msgstr "You need a health flask charge to revive."
 
-#: FakeDeath/FakeDeath.cs:1369
+#: FakeDeath/FakeDeath.Revive.cs:298
+msgid "Revive failed. Get closer and try again."
+msgstr "Revive failed. Get closer and try again."
+
+#: FakeDeath/FakeDeath.Revive.cs:428
+msgid "You died. You will be back at the next passage."
+msgstr "You died. You will be back at the next passage."
+
+#: FakeDeath/FakeDeath.Revive.cs:434
+msgid "You are down! A teammate can revive you."
+msgstr "You are down! A teammate can revive you."
+
+#: FakeDeath/FakeDeath.Revive.cs:463
+msgid "Revived! Your next fall in this level is final."
+msgstr "Revived! Your next fall in this level is final."
+
+#: FakeDeath/FakeDeath.Revive.cs:464
+msgid "Revived!"
+msgstr "Revived!"
+
+#: FakeDeath/FakeDeath.cs:1335
 msgid "Game Over"
 msgstr "Game Over"
 
-#: FakeDeath/FakeDeath.cs:449
+#: FakeDeath/FakeDeath.cs:481
 msgid "{0} fell!"
 msgstr "{0} fell!"
+
+#: FakeDeath/FakeDeath.cs:498
+msgid "{0} is out until the next passage!"
+msgstr "{0} is out until the next passage!"
 
 #: GameDataSync/GameDataSync.cs:308
 msgid "Run failed to synchronize with your friend. Please return to the menu and retry."
@@ -53,7 +89,7 @@ msgstr "Run failed to synchronize with your friend. Please return to the menu an
 msgid "As in game"
 msgstr "As in game"
 
-#: ModEntry/ModEntry.cs:1195
+#: ModEntry/ModEntry.cs:1197
 msgid "Level failed to synchronize with the host. Return to the menu and rejoin."
 msgstr "Level failed to synchronize with the host. Return to the menu and rejoin."
 
@@ -704,10 +740,6 @@ msgstr "Extra multiplier on top of co-op difficulty. Set by the host."
 #: UI/SettingsUI.cs:73
 msgid "Multiplayer settings"
 msgstr "Multiplayer settings"
-
-#: dynamic
-msgid "Hold to revive."
-msgstr "Hold to revive."
 
 #: dynamic
 msgid "Not all players ready"

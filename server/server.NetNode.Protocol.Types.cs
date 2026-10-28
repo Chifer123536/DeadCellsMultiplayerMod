@@ -352,6 +352,7 @@ public sealed partial class NetNode
     {
         public readonly int UserId;
         public readonly bool IsDowned;
+        public readonly bool IsDead;
         public readonly double X;
         public readonly double Y;
         public readonly string LevelId;
@@ -361,10 +362,11 @@ public sealed partial class NetNode
         public readonly bool HasHeadAnim;
         public readonly string? HeadAnim;
 
-        public PlayerDownState(int userId, bool isDowned, double x, double y, string levelId, bool hasHeadPosition = false, double headX = 0, double headY = 0, bool hasHeadAnim = false, string? headAnim = null)
+        public PlayerDownState(int userId, bool isDowned, double x, double y, string levelId, bool hasHeadPosition = false, double headX = 0, double headY = 0, bool hasHeadAnim = false, string? headAnim = null, bool isDead = false)
         {
             UserId = userId;
             IsDowned = isDowned;
+            IsDead = isDowned && isDead;
             X = x;
             Y = y;
             LevelId = levelId ?? string.Empty;

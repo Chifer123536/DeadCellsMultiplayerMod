@@ -33,6 +33,8 @@ namespace DeadCellsMultiplayerMod
         private bool _hasHeadAnimTarget;
         private string? _headAnimTarget;
         private string? _interactionLabelText;
+        bool _interactionActionable = true;
+        bool _isDead;
         private LightTip? _interactionLightTip;
         private Pointer? _corpsePointer;
         private const int CorpseMarkerColor = 0xED6a1F;
@@ -98,14 +100,26 @@ namespace DeadCellsMultiplayerMod
             ApplyTargetToHomunculus();
         }
 
-        public void SetInteractionLabel(string? text)
+        public void SetInteractionLabel(string? text, bool actionable = true)
         {
             var normalized = string.IsNullOrWhiteSpace(text) ? null : text.Trim();
-            if (string.Equals(_interactionLabelText, normalized, StringComparison.Ordinal))
+            if (string.Equals(_interactionLabelText, normalized, StringComparison.Ordinal) &&
+                _interactionActionable == actionable)
                 return;
 
             _interactionLabelText = normalized;
+            _interactionActionable = actionable;
             ApplyInteractionLabel();
+        }
+
+        public void SetDead(bool dead)
+        {
+            if (_isDead == dead)
+                return;
+
+            _isDead = dead;
+            if (dead)
+                ClearCorpsePointer();
         }
 
         private int ResolveTargetDir(int dir)
@@ -656,7 +670,7 @@ namespace DeadCellsMultiplayerMod
         private void EnsureCorpsePointer()
         {
             var corpse = _corpse;
-            if (corpse == null || corpse.destroyed)
+            if (corpse == null || corpse.destroyed || _isDead)
             {
                 ClearCorpsePointer();
                 return;
@@ -729,7 +743,10 @@ namespace DeadCellsMultiplayerMod
                 if (tip == null)
                     return;
 
-                tip.addActivate(_interactionLabelText.AsHaxeString(), null, null);
+                if (_interactionActionable)
+                    tip.addActivate(_interactionLabelText.AsHaxeString(), true, null);
+                else
+                    tip.addText(_interactionLabelText.AsHaxeString(), null);
                 _interactionLightTip = tip;
             }
             catch

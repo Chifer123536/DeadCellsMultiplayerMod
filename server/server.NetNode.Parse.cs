@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using DeadCellsMultiplayerMod.Interaction;
 using DeadCellsMultiplayerMod.Mobs.MobsSynchronization;
+using DeadCellsMultiplayerMod.PortableCore;
 
 public sealed partial class NetNode
 {
@@ -732,8 +733,10 @@ public sealed partial class NetNode
         if (parsedUserId <= 0)
             return false;
 
-        if (!TryParseBool(parts[1], out var isDowned))
+        if (!ReviveWire.TryParseDownState(parts[1], out var downKind))
             return false;
+        var isDowned = downKind != DownStateKind.Up;
+        var isDead = downKind == DownStateKind.Dead;
         if (!double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var x))
             return false;
         if (!double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var y))
@@ -768,7 +771,7 @@ public sealed partial class NetNode
             }
         }
 
-        state = new PlayerDownState(parsedUserId, isDowned, x, y, levelId, hasHeadPosition, headX, headY, hasHeadAnim, headAnim);
+        state = new PlayerDownState(parsedUserId, isDowned, x, y, levelId, hasHeadPosition, headX, headY, hasHeadAnim, headAnim, isDead);
         return true;
     }
 

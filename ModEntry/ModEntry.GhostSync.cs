@@ -2204,6 +2204,7 @@ namespace DeadCellsMultiplayerMod
             global::DeadCellsMultiplayerMod.AdvancedCoop.CoopAdvancedHardening.ResetSessionState();
             try { global::DeadCellsMultiplayerMod.Mobs.MobsSynchronization.MobsSynchronization.ClearTrackingForLevelChange(); } catch { }
             ResetFakeDeathState(unlockLocalHero: true, sendNetworkUpState: false);
+            ResetReviveBudget("session reset");
             ResetLocalSkinSendCache();
             ResetDoorMarkerState();
             _lastSentDiveInfoPayload = string.Empty;

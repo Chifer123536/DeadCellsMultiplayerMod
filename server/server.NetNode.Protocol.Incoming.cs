@@ -489,6 +489,12 @@ public sealed partial class NetNode
             return true;
         }
 
+        if (TryHandleReviveLine(line, senderId, forceSenderId, out var reviveForwardLine))
+        {
+            forwardLine = reviveForwardLine;
+            return true;
+        }
+
         if (TryHandleAchievementLine(line, senderId, forceSenderId, out var achievementForwardLine))
         {
             forwardLine = achievementForwardLine;
