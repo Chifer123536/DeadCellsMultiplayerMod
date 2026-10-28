@@ -55,6 +55,16 @@ namespace DeadCellsMultiplayerMod
             return true;
         }
 
+        internal static int GetRemotePartyState(int userId)
+        {
+            var instance = Instance;
+            if (instance == null || userId <= 0)
+                return 0;
+            if (!instance._remoteDowned.TryGetValue(userId, out var state) || state == null)
+                return 0;
+            return state.IsDead ? 2 : 1;
+        }
+
         internal static bool HasAnyPlayerDownedForCombat()
         {
             var instance = Instance;

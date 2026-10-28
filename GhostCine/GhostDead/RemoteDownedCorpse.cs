@@ -771,6 +771,8 @@ namespace DeadCellsMultiplayerMod
             var hero = _templateHero;
             if (hero == null || hero.destroyed)
                 return;
+            if (ModEntry.IsSpectatingRemoteCamera())
+                return;
 
             try
             {

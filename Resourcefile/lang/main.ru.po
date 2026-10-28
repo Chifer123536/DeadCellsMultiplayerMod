@@ -41,31 +41,31 @@ msgstr "Вернётся в следующем переходе"
 msgid "Revive"
 msgstr "Поднять"
 
-#: FakeDeath/FakeDeath.Revive.cs:113
+#: FakeDeath/FakeDeath.Revive.cs:107
 msgid "You are back in the fight."
 msgstr "Вы снова в бою."
 
-#: FakeDeath/FakeDeath.Revive.cs:251
+#: FakeDeath/FakeDeath.Revive.cs:245
 msgid "You need a health flask charge to revive."
 msgstr "Для воскрешения нужен заряд фляги."
 
-#: FakeDeath/FakeDeath.Revive.cs:298
+#: FakeDeath/FakeDeath.Revive.cs:301
 msgid "Revive failed. Get closer and try again."
 msgstr "Не вышло поднять. Подойдите ближе и попробуйте снова."
 
-#: FakeDeath/FakeDeath.Revive.cs:428
+#: FakeDeath/FakeDeath.Revive.cs:431
 msgid "You died. You will be back at the next passage."
 msgstr "Вы погибли. Вернётесь в следующем переходе."
 
-#: FakeDeath/FakeDeath.Revive.cs:434
+#: FakeDeath/FakeDeath.Revive.cs:437
 msgid "You are down! A teammate can revive you."
 msgstr "Вы упали! Напарник может вас поднять."
 
-#: FakeDeath/FakeDeath.Revive.cs:463
+#: FakeDeath/FakeDeath.Revive.cs:466
 msgid "Revived! Your next fall in this level is final."
 msgstr "Вас подняли! Следующее падение на этом уровне — окончательное."
 
-#: FakeDeath/FakeDeath.Revive.cs:464
+#: FakeDeath/FakeDeath.Revive.cs:467
 msgid "Revived!"
 msgstr "Вас подняли!"
 
@@ -613,6 +613,22 @@ msgstr "Напарник дошёл до выхода. Переход через
 msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 msgstr "Босс-раш не синхронизировался с другом. Подойдите к двери ещё раз."
 
+#: UI/MultiplayerUI.cs:435
+msgid "Down"
+msgstr "Упал"
+
+#: UI/MultiplayerUI.cs:436
+msgid "Out"
+msgstr "Выбыл"
+
+#: UI/MultiplayerUI.cs:701
+msgid "Spectating {0}"
+msgstr "Наблюдение: {0}"
+
+#: UI/MultiplayerUI.cs:704
+msgid "Switch player: , / ."
+msgstr "Сменить игрока: , / ."
+
 #: UI/SettingsUI.cs:188
 msgid "General"
 msgstr "Общие"
@@ -726,14 +742,18 @@ msgid "Boss sync trace logging"
 msgstr "Трассировка синхронизации боссов"
 
 #: UI/SettingsUI.cs:329
+msgid "Preview party HUD"
+msgstr "Превью плашек напарников"
+
+#: UI/SettingsUI.cs:333
 msgid "Show perf logs"
 msgstr "Логи производительности"
 
-#: UI/SettingsUI.cs:330
+#: UI/SettingsUI.cs:334
 msgid "Controls threshold-based [Perf] hitch and slowdown logging."
 msgstr "Запись подвисаний и замедлений [Perf] в лог."
 
-#: UI/SettingsUI.cs:374
+#: UI/SettingsUI.cs:378
 msgid "Extra multiplier on top of co-op difficulty. Set by the host."
 msgstr "Дополнительный множитель поверх кооп-сложности. Задаёт хост."
 

@@ -17,12 +17,14 @@ namespace DeadCellsMultiplayerMod
         private const int KeyAsciiComma = 44;
         private const int KeyAsciiPeriod = 46;
         private const double CameraRefollowHoldSeconds = 0.75;
+        private const double CameraCycleDebounceSeconds = 0.2;
         private const string PadUiPrevBindingName = "ui_prev";
         private const string PadUiNextBindingName = "ui_next";
 
         private int _spectatedRemoteCameraId;
         private int _spectatedCameraOrderIndex;
         private long _cameraRefollowUntilTicks;
+        private long _lastCameraCycleTicks;
         private bool _cameraCycleCommaTextPressed;
         private bool _cameraCyclePeriodTextPressed;
         private bool _cameraSpectateTextInputHookInstalled;
@@ -39,8 +41,12 @@ namespace DeadCellsMultiplayerMod
             if (_spectatedRemoteCameraId > 0)
                 TrackPreferredCameraTarget(immediate: false);
 
-            if (_netRole == NetRole.None || me == null)
+            if (_netRole == NetRole.None || me == null || !_localFakeDead)
+            {
+                _cameraCycleCommaTextPressed = false;
+                _cameraCyclePeriodTextPressed = false;
                 return;
+            }
 
             var direction = 0;
             if (ConsumeCameraCyclePress(KeyOemComma, KeyAsciiComma, ref _cameraCycleCommaTextPressed))
@@ -55,6 +61,14 @@ namespace DeadCellsMultiplayerMod
             if (direction == 0)
                 return;
 
+            var now = Stopwatch.GetTimestamp();
+            if (_lastCameraCycleTicks != 0 &&
+                now - _lastCameraCycleTicks < (long)(Stopwatch.Frequency * CameraCycleDebounceSeconds))
+            {
+                return;
+            }
+
+            _lastCameraCycleTicks = now;
             CycleSpectatedCameraTarget(direction);
         }
 
@@ -210,6 +224,29 @@ namespace DeadCellsMultiplayerMod
         internal static bool IsSpectatingRemoteCamera()
         {
             return Instance != null && Instance._spectatedRemoteCameraId > 0;
+        }
+
+        internal static int GetSpectatedRemoteId()
+        {
+            var instance = Instance;
+            return instance != null && instance._localFakeDead ? instance._spectatedRemoteCameraId : 0;
+        }
+
+        internal static int CountSpectateTargets()
+        {
+            var instance = Instance;
+            if (instance == null)
+                return 0;
+
+            var count = 0;
+            for (var i = 0; i < clientIds.Length; i++)
+            {
+                var remoteId = clientIds[i];
+                if (remoteId > 0 && instance.TryResolveRemoteCameraTarget(remoteId, out _))
+                    count++;
+            }
+
+            return count;
         }
 
         private Entity? ResolvePreferredCameraTargetCore(Entity? localFallback)
@@ -505,3 +542,15 @@ namespace DeadCellsMultiplayerMod
 
     }
 }
+
+/*
+ * ═══════════════════════════════════════
+ *  SPECTATE CAMERA — КАК РАБОТАЕТ
+ * ═══════════════════════════════════════
+ *  Только пока свой игрок лежит или выбыл (_localFakeDead): камера на первого живого напарника
+ *  того же уровня; цель упала/ушла → следующая; живых нет → свой труп. Подъём → камера на себя.
+ *  Смена цели: , / . и ui_prev / ui_next на паде, антидребезг 0.2 с.
+ *  DeadBase / RemoteDownedCorpse / восстановление после босс-катсцены не трогают viewport,
+ *  пока идёт наблюдение, иначе двойной track() за кадр сбрасывает сглаживание камеры.
+ * ═══════════════════════════════════════
+*/

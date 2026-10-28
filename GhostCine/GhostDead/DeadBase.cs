@@ -1020,6 +1020,8 @@ namespace DeadCellsMultiplayerMod
         {
             if (_hero == null || _hero.destroyed)
                 return;
+            if (ModEntry.IsLocalPlayerDowned() && ModEntry.IsSpectatingRemoteCamera())
+                return;
 
             try
             {

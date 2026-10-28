@@ -1069,6 +1069,8 @@ namespace DeadCellsMultiplayerMod
                 var hero = me;
                 if (hero == null || hero.destroyed)
                     return;
+                if (IsSpectatingRemoteCamera())
+                    return;
 
                 var viewport = hero._level?.viewport;
                 if (viewport != null && !ReferenceEquals(viewport.tracked, hero))

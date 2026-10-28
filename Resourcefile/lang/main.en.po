@@ -41,31 +41,31 @@ msgstr "Back at the next passage"
 msgid "Revive"
 msgstr "Revive"
 
-#: FakeDeath/FakeDeath.Revive.cs:113
+#: FakeDeath/FakeDeath.Revive.cs:107
 msgid "You are back in the fight."
 msgstr "You are back in the fight."
 
-#: FakeDeath/FakeDeath.Revive.cs:251
+#: FakeDeath/FakeDeath.Revive.cs:245
 msgid "You need a health flask charge to revive."
 msgstr "You need a health flask charge to revive."
 
-#: FakeDeath/FakeDeath.Revive.cs:298
+#: FakeDeath/FakeDeath.Revive.cs:301
 msgid "Revive failed. Get closer and try again."
 msgstr "Revive failed. Get closer and try again."
 
-#: FakeDeath/FakeDeath.Revive.cs:428
+#: FakeDeath/FakeDeath.Revive.cs:431
 msgid "You died. You will be back at the next passage."
 msgstr "You died. You will be back at the next passage."
 
-#: FakeDeath/FakeDeath.Revive.cs:434
+#: FakeDeath/FakeDeath.Revive.cs:437
 msgid "You are down! A teammate can revive you."
 msgstr "You are down! A teammate can revive you."
 
-#: FakeDeath/FakeDeath.Revive.cs:463
+#: FakeDeath/FakeDeath.Revive.cs:466
 msgid "Revived! Your next fall in this level is final."
 msgstr "Revived! Your next fall in this level is final."
 
-#: FakeDeath/FakeDeath.Revive.cs:464
+#: FakeDeath/FakeDeath.Revive.cs:467
 msgid "Revived!"
 msgstr "Revived!"
 
@@ -613,6 +613,22 @@ msgstr "Teammate reached the exit. Following in {0} seconds..."
 msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 msgstr "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 
+#: UI/MultiplayerUI.cs:435
+msgid "Down"
+msgstr "Down"
+
+#: UI/MultiplayerUI.cs:436
+msgid "Out"
+msgstr "Out"
+
+#: UI/MultiplayerUI.cs:701
+msgid "Spectating {0}"
+msgstr "Spectating {0}"
+
+#: UI/MultiplayerUI.cs:704
+msgid "Switch player: , / ."
+msgstr "Switch player: , / ."
+
 #: UI/SettingsUI.cs:188
 msgid "General"
 msgstr "General"
@@ -726,14 +742,18 @@ msgid "Boss sync trace logging"
 msgstr "Boss sync trace logging"
 
 #: UI/SettingsUI.cs:329
+msgid "Preview party HUD"
+msgstr "Preview party HUD"
+
+#: UI/SettingsUI.cs:333
 msgid "Show perf logs"
 msgstr "Show perf logs"
 
-#: UI/SettingsUI.cs:330
+#: UI/SettingsUI.cs:334
 msgid "Controls threshold-based [Perf] hitch and slowdown logging."
 msgstr "Controls threshold-based [Perf] hitch and slowdown logging."
 
-#: UI/SettingsUI.cs:374
+#: UI/SettingsUI.cs:378
 msgid "Extra multiplier on top of co-op difficulty. Set by the host."
 msgstr "Extra multiplier on top of co-op difficulty. Set by the host."
 

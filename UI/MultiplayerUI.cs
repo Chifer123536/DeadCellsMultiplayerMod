@@ -25,10 +25,16 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
         IOnAdvancedModuleInitializing,
         IOnHeroUpdate
     {
-        private sealed class LifeSlot
+        enum PartyState
+        {
+            Alive,
+            Downed,
+            Out
+        }
+
+        sealed class LifeSlot
         {
             public int SlotIndex { get; }
-            public dc.ui.hud.LifeBar LifeBar { get; }
             public FlowBox Container { get; }
             public dc.h2d.Object LabelBox { get; }
             public Graphics? ChipGraphics { get; set; }
@@ -38,14 +44,18 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             public string? LastStatus { get; set; }
             public int LastLife { get; set; } = int.MinValue;
             public int LastMaxLife { get; set; } = int.MinValue;
-            public int LastLif { get; set; } = int.MinValue;
-            public int LastBonusLife { get; set; } = int.MinValue;
-            public int LastRecover { get; set; } = int.MinValue;
+            public PartyState LastState { get; set; } = (PartyState)(-1);
+            public bool LastSpectated { get; set; }
+            public double Scale { get; set; }
+            public double HeightArt { get; set; }
+            public double RowTopArt { get; set; }
+            public double RowHeightArt { get; set; }
+            public double BarTopArt { get; set; }
+            public double NameMaxWidthPx { get; set; }
 
-            public LifeSlot(int slotIndex, dc.ui.hud.LifeBar lifeBar, FlowBox container, dc.h2d.Object labelBox)
+            public LifeSlot(int slotIndex, FlowBox container, dc.h2d.Object labelBox)
             {
                 SlotIndex = slotIndex;
-                LifeBar = lifeBar;
                 Container = container;
                 LabelBox = labelBox;
             }
@@ -75,23 +85,44 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
 
         private static MultiplayerUI? _instance;
 
-        // Party plate layout (panel-local units), matching the mockup: bronze name plate on the
-        // left, long dark bar plate with a segmented HP fill extending to the right.
-        private const double PartyChipX = 18.0;
-        private const double PartyChipY = 42.0;
-        private const double PartyChipGapY = 52.0;
-        private const double PlateTotalW = 300.0;
-        private const double NamePlateW = 82.0;
-        private const double NamePlateH = 42.0;
-        private const double BarPlateX = 76.0;
-        private const double BarPlateH = 26.0;
-        private const double BarPlateY = (NamePlateH - BarPlateH) / 2.0;
-        private const double PartyBarX = BarPlateX + 7.0;
-        private const double PartyBarY = BarPlateY + 7.0;
-        private const double PartyBarW = PlateTotalW - 7.0 - PartyBarX;
-        private const double PartyBarH = BarPlateH - 14.0;
-        private const int PartyBarSegments = 6;
+        const double PlateW = 96.0;
+        const double PlateEdge = 2.0;
+        const double PlateAccentW = 2.0;
+        const double PlatePadL = 3.0;
+        const double PlatePadR = 3.0;
+        const double PlatePadT = 3.0;
+        const double PlatePadB = 3.0;
+        const double PlateRowGap = 1.0;
+        const double PlateBarH = 4.0;
+        const double PlateGapY = 3.0;
+        const double PlateNameStatusGap = 4.0;
+        const double PlateContentL = PlateEdge + PlateAccentW + PlatePadL;
+        const double PlateContentR = PlateW - PlateEdge - PlatePadR;
+        const int PlateBarTicks = 4;
 
+        const int ColorEdge = 0x07080D;
+        const int ColorFrame = 0x343B52;
+        const int ColorFrameSpectated = 0xE6B34C;
+        const int ColorPanel = 0x131725;
+        const int ColorPanelLight = 0x1F2538;
+        const int ColorBarBack = 0x2B1419;
+        const int ColorBarBackDowned = 0x3A2414;
+        const int ColorBarBackOut = 0x1D1F26;
+        const int ColorDowned = 0xFF8A3D;
+        const int ColorOut = 0x5C606B;
+        const int ColorName = 0xF1E7D0;
+        const int ColorNameSpectated = 0xFFE3A0;
+        const int ColorTextMuted = 0x8E93A0;
+
+        const double SpectateHintBottomArt = 34.0;
+        const int ColorSpectateHint = 0xF1E7D0;
+        const int ColorSpectateHintSub = 0xB4B9C6;
+
+        dc.ui.Text? _spectateHintTitle;
+        dc.ui.Text? _spectateHintSub;
+        string? _spectateHintTitleValue;
+        string? _spectateHintSubValue;
+        bool _previewActive;
 
         public MultiplayerUI(ModEntry Entry, int slotIndex = 0)
         {
@@ -114,6 +145,7 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             // The custom plate is owned by a vanilla FlowBox, so old HUD disposal owns its
             // render lifecycle. Drop our references before initializing the replacement HUD.
             try { ClearSlots(); } catch { }
+            RemoveSpectateHint();
 
             orig(self);
 
@@ -173,6 +205,16 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             var net = _net;
             if (net == null)
             {
+                if (MultiplayerSettingsStorage.DebugPartyHudPreview)
+                {
+                    RenderPartyPreview(self);
+                    return;
+                }
+
+                if (_previewActive)
+                    ClearSlots();
+
+                HideSpectateHint();
                 if (_boundNet != null)
                 {
                     _boundNet = null;
@@ -217,14 +259,21 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             }
 
             if (_slots.Length == 0)
+            {
+                HideSpectateHint();
                 return;
+            }
 
             if (!net.TryGetRemoteHpSnapshots(out var snapshots) || snapshots.Count == 0)
             {
                 ClearSlots();
+                HideSpectateHint();
                 return;
             }
 
+            var spectatedId = ModEntry.GetSpectatedRemoteId();
+            string? spectatedName = null;
+            var scale = CurrentPixelScale(_hud);
             try
             {
                 System.Array.Clear(_slotActive, 0, _slotActive.Length);
@@ -249,11 +298,13 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
                         var hud = _hud;
                         if (hud == null)
                             continue;
-                        var lifeBar = new dc.ui.hud.LifeBar(new LifeBarColorMode.Normal(), null);
-                        slot = initkingLife(hud, slotIndex, lifeBar);
+                        slot = CreatePlate(hud, slotIndex);
                         _slots[slotIndex] = slot;
-                        Log.Information("[NetMod][PartyHUD] created plate slot={Slot}", slotIndex);
+                        Log.Information("[NetMod][PartyHUD] created plate slot={Slot} scale={Scale}", slotIndex, scale);
                     }
+
+                    if (slot.Scale != scale)
+                        RelayoutPlate(slot, scale);
 
                     var displayName = ModEntry.GetClientLabel(slotIndex);
                     if (string.IsNullOrWhiteSpace(displayName) ||
@@ -265,8 +316,14 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
                     }
                     if (string.IsNullOrWhiteSpace(displayName))
                         displayName = "Guest";
+
+                    var state = (PartyState)ModEntry.GetRemotePartyState(remote.Id);
+                    var spectated = spectatedId > 0 && remote.Id == spectatedId;
+                    if (spectated)
+                        spectatedName = displayName;
+
                     UpdateSlotLabel(slot, displayName);
-                    UpdateLifeBar(slot, remote.Life, remote.MaxLife, remote.Lif, remote.BonusLife, remote.Recover);
+                    UpdateLifeBar(slot, remote.Life, remote.MaxLife, state, spectated);
                     _slotActive[slotIndex] = true;
                 }
             }
@@ -276,21 +333,21 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             }
 
             RemoveInactiveSlots();
+            UpdateSpectateHint(spectatedName, spectatedName == null ? 0 : ModEntry.CountSpectateTargets());
         }
 
 
-        private LifeSlot initkingLife(HUD self, int slotIndex, dc.ui.hud.LifeBar kinglifeui)
+        LifeSlot CreatePlate(HUD self, int slotIndex)
         {
             this.toplib = self.topRightFlowT;
 
-            // The OUTER owner is a vanilla-managed FlowBox. The inner panel is a plain Object so
-            // its graphics/text keep exact positions, but it cannot outlive the owning HUD.
             FlowBox owner = FlowBox.Class.createBoxValidation(
                 null, Ref<double>.Null, Ref<double>.Null, Ref<bool>.Null, null);
             owner.isVertical = false;
             owner.box.alpha = 0;
-            owner.set_horizontalAlign(new FlowAlign.Middle());
-            owner.set_verticalAlign(new FlowAlign.Middle());
+            owner.set_horizontalAlign(new FlowAlign.Left());
+            owner.set_verticalAlign(new FlowAlign.Top());
+            owner.padBot = PlateGapY;
 
             var panel = new dc.h2d.Object(null);
             owner.addChild(panel);
@@ -298,136 +355,249 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             var chip = new Graphics(panel);
             chip.visible = true;
 
-            var displayName = ModEntry.GetClientLabel(slotIndex);
-            if (string.IsNullOrWhiteSpace(displayName))
-                displayName = "Guest";
-            displayName = FitDisplayName(displayName);
-
-            dc.ui.Text nameText = Assets.Class.makeText(
-                displayName.AsHaxeString(),
+            var nameText = Assets.Class.makeText(
+                "Guest".AsHaxeString(),
                 dc.ui.Text.Class.COLORS.get("WO".AsHaxeString()),
                 false,
                 panel);
-            nameText.y = 11;
-            nameText.textColor = 0xF2D98C;
-            nameText.customScale = 0.8;
-            nameText.onResize();
-            CenterText(nameText, displayName, 0.0, NamePlateW);
+            nameText.textColor = ColorName;
 
-            dc.ui.Text statusText = Assets.Class.makeText(
+            var statusText = Assets.Class.makeText(
                 "0%".AsHaxeString(),
                 dc.ui.Text.Class.COLORS.get("WO".AsHaxeString()),
                 false,
                 panel);
-            statusText.y = BarPlateY + 5.0;
-            statusText.textColor = 0xF4F8FF;
-            statusText.customScale = 0.6;
-            statusText.onResize();
-            CenterText(statusText, "0%", PartyBarX, PartyBarW);
-
-            try { kinglifeui.visible = false; } catch { }
+            statusText.textColor = ColorName;
 
             this.toplib.addChild(owner);
             this.toplib.isVertical = true;
             this.toplib.set_verticalAlign(new FlowAlign.Top());
             this.toplib.set_horizontalAlign(new FlowAlign.Right());
 
-            var slot = new LifeSlot(slotIndex, kinglifeui, owner, panel)
+            return new LifeSlot(slotIndex, owner, panel)
             {
                 ChipGraphics = chip,
                 LabelText = nameText,
                 StatusText = statusText,
-                LastLabel = displayName,
                 LastStatus = "0%"
             };
-            DrawPartyChip(slot, 0, 1, 0);
-            return slot;
         }
 
-        /// <summary>Centers a dc.ui.Text horizontally inside [regionX, regionX + regionW].</summary>
-        private static void CenterText(dc.ui.Text? text, string label, double regionX, double regionW)
+        static double ArtToPx(double art, double scale) => System.Math.Floor(art * scale + 0.5);
+
+        static double CurrentPixelScale(HUD? hud)
+        {
+            try
+            {
+                var scale = hud?.get_pixelScale.Invoke() ?? 1.0;
+                return double.IsFinite(scale) && scale >= 1.0 ? scale : 1.0;
+            }
+            catch
+            {
+                return 1.0;
+            }
+        }
+
+        static double MeasureTextWidth(dc.ui.Text? text, string value)
+        {
+            if (text == null || string.IsNullOrEmpty(value))
+                return 0.0;
+            try
+            {
+                return text.calcTextWidth(value.AsHaxeString()) * text.scaleX;
+            }
+            catch
+            {
+                return value.Length * 8.0;
+            }
+        }
+
+        static double MeasureTextHeight(dc.ui.Text? text)
+        {
+            if (text == null)
+                return 0.0;
+            try
+            {
+                var height = text.textHeight * text.scaleY;
+                return height > 0 ? height : 18.0;
+            }
+            catch
+            {
+                return 18.0;
+            }
+        }
+
+        static string StatusLabel(PartyState state, int percent) => state switch
+        {
+            PartyState.Downed => DeadCellsMultiplayerMod.I18n.CoopText.T("Down"),
+            PartyState.Out => DeadCellsMultiplayerMod.I18n.CoopText.T("Out"),
+            _ => $"{percent}%"
+        };
+
+        static void RelayoutPlate(LifeSlot slot, double scale)
+        {
+            slot.Scale = scale;
+            try { slot.LabelText?.onResize(); } catch { }
+            try { slot.StatusText?.onResize(); } catch { }
+
+            var rowPx = System.Math.Max(MeasureTextHeight(slot.LabelText), MeasureTextHeight(slot.StatusText));
+            slot.RowHeightArt = System.Math.Ceiling(rowPx / scale);
+            slot.RowTopArt = PlateEdge + PlatePadT;
+            slot.BarTopArt = slot.RowTopArt + slot.RowHeightArt + PlateRowGap;
+            slot.HeightArt = slot.BarTopArt + PlateBarH + PlatePadB + PlateEdge;
+
+            var statusMax = System.Math.Max(
+                MeasureTextWidth(slot.StatusText, "100%"),
+                System.Math.Max(
+                    MeasureTextWidth(slot.StatusText, StatusLabel(PartyState.Downed, 0)),
+                    MeasureTextWidth(slot.StatusText, StatusLabel(PartyState.Out, 0))));
+            slot.NameMaxWidthPx = System.Math.Max(
+                0.0,
+                ArtToPx(PlateContentR, scale) - ArtToPx(PlateContentL, scale) - statusMax - ArtToPx(PlateNameStatusGap, scale));
+
+            try
+            {
+                slot.Container.set_minWidth((int)ArtToPx(PlateW, scale));
+                slot.Container.set_minHeight((int)ArtToPx(slot.HeightArt, scale));
+            }
+            catch
+            {
+            }
+
+            slot.LastLabel = null;
+            slot.LastStatus = null;
+            slot.LastLife = int.MinValue;
+        }
+
+        static string FitDisplayName(dc.ui.Text? text, string displayName, double maxWidthPx)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                displayName = "Guest";
+            displayName = displayName.Trim();
+            if (text == null || MeasureTextWidth(text, displayName) <= maxWidthPx)
+                return displayName;
+
+            var ellipsis = MeasureTextWidth(text, "…") > 0 ? "…" : "...";
+            for (var length = displayName.Length - 1; length > 0; length--)
+            {
+                if (char.IsHighSurrogate(displayName[length - 1]))
+                    continue;
+                var candidate = displayName[..length].TrimEnd() + ellipsis;
+                if (MeasureTextWidth(text, candidate) <= maxWidthPx)
+                    return candidate;
+            }
+
+            return ellipsis;
+        }
+
+        static void PlaceRowText(LifeSlot slot, dc.ui.Text? text, bool alignRight, string value)
         {
             if (text == null)
                 return;
 
-            double textWidth;
-            try
-            {
-                textWidth = text.textWidth * text.scaleX;
-            }
-            catch
-            {
-                textWidth = label.Length * 10.0;
-            }
-
-            if (textWidth <= 0)
-                textWidth = label.Length * 10.0;
-
-            text.x = System.Math.Max(regionX + 4.0, regionX + (regionW - textWidth) * 0.5);
+            var scale = slot.Scale;
+            var rowTop = ArtToPx(slot.RowTopArt, scale);
+            var rowHeight = ArtToPx(slot.RowHeightArt, scale);
+            text.y = rowTop + System.Math.Floor((rowHeight - MeasureTextHeight(text)) * 0.5);
+            text.x = alignRight
+                ? ArtToPx(PlateContentR, scale) - System.Math.Ceiling(MeasureTextWidth(text, value))
+                : ArtToPx(PlateContentL, scale);
         }
 
-        /// <summary>The name plate is small; trim long Steam names so they stay inside it.</summary>
-        private static string FitDisplayName(string displayName)
-        {
-            const int maxChars = 9;
-            if (string.IsNullOrWhiteSpace(displayName))
-                return "Guest";
-            displayName = displayName.Trim();
-            return displayName.Length <= maxChars ? displayName : displayName[..(maxChars - 1)] + "…";
-        }
-
-        private static void UpdateSlotLabel(LifeSlot slot, string displayName)
+        static void UpdateSlotLabel(LifeSlot slot, string displayName)
         {
             if (string.IsNullOrWhiteSpace(displayName))
                 displayName = "Guest";
-            displayName = FitDisplayName(displayName);
+            if (slot.LabelText == null || slot.LastLabel == displayName)
+                return;
 
-            if (slot.LabelText != null && slot.LastLabel != displayName)
-            {
-                slot.LabelText.set_text(displayName.AsHaxeString());
-                slot.LabelText.onResize();
-                CenterText(slot.LabelText, displayName, 0.0, NamePlateW);
-                slot.LastLabel = displayName;
-            }
+            var fitted = FitDisplayName(slot.LabelText, displayName, slot.NameMaxWidthPx);
+            slot.LabelText.set_text(fitted.AsHaxeString());
+            PlaceRowText(slot, slot.LabelText, alignRight: false, fitted);
+            slot.LastLabel = displayName;
         }
 
-        private static void UpdateLifeBar(LifeSlot slot, int life, int maxLife, int lif, int bonusLife, int recover)
+        static void UpdateLifeBar(LifeSlot slot, int life, int maxLife, PartyState state, bool spectated)
         {
             var safeMaxLife = System.Math.Max(1, maxLife);
             var safeLife = System.Math.Max(0, System.Math.Min(life, safeMaxLife));
-            var safeLif = System.Math.Max(0, System.Math.Min(lif <= 0 ? safeLife : lif, safeMaxLife));
-            var percent = safeMaxLife <= 0 ? 0 : (int)System.Math.Round((safeLife * 100.0) / safeMaxLife);
-            var status = $"{percent}%";
+            var percent = (int)System.Math.Round(safeLife * 100.0 / safeMaxLife);
+            if (safeLife > 0 && percent == 0)
+                percent = 1;
+            var status = StatusLabel(state, percent);
 
             if (slot.LastLife == safeLife &&
                 slot.LastMaxLife == safeMaxLife &&
-                slot.LastLif == safeLif &&
-                slot.LastBonusLife == bonusLife &&
-                slot.LastRecover == recover &&
+                slot.LastState == state &&
+                slot.LastSpectated == spectated &&
                 string.Equals(slot.LastStatus, status, StringComparison.Ordinal))
             {
                 return;
             }
 
-            DrawPartyChip(slot, safeLife, safeMaxLife, percent);
+            DrawPlate(slot, safeLife, safeMaxLife, percent, state, spectated);
 
-            if (slot.StatusText != null && !string.Equals(slot.LastStatus, status, StringComparison.Ordinal))
+            if (slot.LabelText != null)
             {
-                slot.StatusText.set_text(status.AsHaxeString());
-                slot.StatusText.textColor = percent <= 25 ? 0xFF9B8A : percent <= 50 ? 0xFFE0A6 : 0xF4F8FF;
-                slot.StatusText.onResize();
-                CenterText(slot.StatusText, status, PartyBarX, PartyBarW);
-                slot.LastStatus = status;
+                slot.LabelText.textColor = state == PartyState.Out
+                    ? ColorTextMuted
+                    : spectated ? ColorNameSpectated : ColorName;
             }
 
+            if (slot.StatusText != null)
+            {
+                if (!string.Equals(slot.LastStatus, status, StringComparison.Ordinal))
+                {
+                    slot.StatusText.set_text(status.AsHaxeString());
+                    PlaceRowText(slot, slot.StatusText, alignRight: true, status);
+                }
+                slot.StatusText.textColor = state switch
+                {
+                    PartyState.Downed => ColorDowned,
+                    PartyState.Out => ColorTextMuted,
+                    _ => percent <= 25 ? 0xFF9F8F : percent <= 50 ? 0xFFD98A : 0xBDF0B5
+                };
+            }
+
+            slot.LastStatus = status;
             slot.LastLife = safeLife;
             slot.LastMaxLife = safeMaxLife;
-            slot.LastLif = safeLif;
-            slot.LastBonusLife = bonusLife;
-            slot.LastRecover = recover;
+            slot.LastState = state;
+            slot.LastSpectated = spectated;
         }
 
-        private static void DrawPartyChip(LifeSlot slot, int life, int maxLife, int percent)
+        static void FillRect(Graphics g, double x0, double y0, double x1, double y1, int color, double alpha)
+        {
+            if (x1 <= x0 || y1 <= y0)
+                return;
+            g.beginFill(Ref<int>.From(ref color), Ref<double>.From(ref alpha));
+            g.drawRect(x0, y0, x1 - x0, y1 - y0);
+            g.endFill();
+        }
+
+        static void HpColors(int percent, out int fill, out int highlight, out int shade)
+        {
+            if (percent <= 25)
+            {
+                fill = 0xD9443F;
+                highlight = 0xF08479;
+                shade = 0x8E2626;
+            }
+            else if (percent <= 50)
+            {
+                fill = 0xE3A33A;
+                highlight = 0xF7CF7A;
+                shade = 0xA16C1F;
+            }
+            else
+            {
+                fill = 0x58C25A;
+                highlight = 0x93E38C;
+                shade = 0x34873C;
+            }
+        }
+
+        static void DrawPlate(LifeSlot slot, int life, int maxLife, int percent, PartyState state, bool spectated)
         {
             var g = slot.ChipGraphics;
             if (g == null)
@@ -437,112 +607,201 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
             {
                 g.clear();
 
-                double fullAlpha = 1.0;
-                int shadowColor = 0x000000;
+                var scale = slot.Scale;
+                var px = System.Math.Max(1.0, ArtToPx(1.0, scale));
+                var w = ArtToPx(PlateW, scale);
+                var h = ArtToPx(slot.HeightArt, scale);
+                var edge = ArtToPx(1.0, scale);
+                var inner = ArtToPx(PlateEdge, scale);
 
-                // --- Soft drop shadow under both plates. ---
-                double shadowAlpha = 0.38;
-                g.beginFill(Ref<int>.From(ref shadowColor), Ref<double>.From(ref shadowAlpha));
-                g.drawRect(3.0, BarPlateY + 3.0, PlateTotalW, BarPlateH);
-                g.drawRect(3.0, 3.0, NamePlateW, NamePlateH);
-                g.endFill();
-
-                // --- Bar plate (drawn first so the name plate overlaps its left edge). ---
-                // Thin gold/bronze outline around a near-black panel, like the mockup.
-                int barOutline = 0xC98A4B;
-                g.beginFill(Ref<int>.From(ref barOutline), Ref<double>.From(ref fullAlpha));
-                g.drawRect(BarPlateX, BarPlateY, PlateTotalW - BarPlateX, BarPlateH);
-                g.endFill();
-
-                int barPanel = 0x14161F;
-                g.beginFill(Ref<int>.From(ref barPanel), Ref<double>.From(ref fullAlpha));
-                g.drawRect(BarPlateX + 2.0, BarPlateY + 2.0, PlateTotalW - BarPlateX - 4.0, BarPlateH - 4.0);
-                g.endFill();
-
-                // HP bar shell (dark inset).
-                int barBorder = 0x07090F;
-                g.beginFill(Ref<int>.From(ref barBorder), Ref<double>.From(ref fullAlpha));
-                g.drawRect(PartyBarX - 2.0, PartyBarY - 2.0, PartyBarW + 4.0, PartyBarH + 4.0);
-                g.endFill();
-
-                int barBackColor = 0x11202A;
-                g.beginFill(Ref<int>.From(ref barBackColor), Ref<double>.From(ref fullAlpha));
-                g.drawRect(PartyBarX, PartyBarY, PartyBarW, PartyBarH);
-                g.endFill();
-
-                // HP fill with pixel-art highlight/shade bands.
-                var safeMax = System.Math.Max(1, maxLife);
-                var safeLife = System.Math.Max(0, System.Math.Min(life, safeMax));
-                var fillW = PartyBarW * safeLife / safeMax;
-
-                if (fillW > 0)
+                HpColors(percent, out var hpFill, out var hpHighlight, out var hpShade);
+                var accent = state switch
                 {
-                    int fillColor = percent <= 25 ? 0xC94040 : percent <= 50 ? 0xD89036 : 0x4CBB5E;
-                    int fillHighlight = percent <= 25 ? 0xE87B6E : percent <= 50 ? 0xF0BC6E : 0x7FDD82;
-                    int fillShade = percent <= 25 ? 0x8C2A2A : percent <= 50 ? 0x9C6420 : 0x2E8F45;
+                    PartyState.Downed => ColorDowned,
+                    PartyState.Out => ColorOut,
+                    _ => hpFill
+                };
 
-                    g.beginFill(Ref<int>.From(ref fillColor), Ref<double>.From(ref fullAlpha));
-                    g.drawRect(PartyBarX, PartyBarY, fillW, PartyBarH);
-                    g.endFill();
+                FillRect(g, 0, 0, w, h, ColorEdge, 0.92);
+                FillRect(g, edge, edge, w - edge, h - edge, spectated ? ColorFrameSpectated : ColorFrame, 1.0);
+                FillRect(g, inner, inner, w - inner, h - inner, ColorPanel, 0.95);
+                FillRect(g, inner, inner, w - inner, inner + px, ColorPanelLight, 1.0);
+                FillRect(g, inner, inner, inner + ArtToPx(PlateAccentW, scale), h - inner, accent, 1.0);
 
-                    g.beginFill(Ref<int>.From(ref fillHighlight), Ref<double>.From(ref fullAlpha));
-                    g.drawRect(PartyBarX, PartyBarY, fillW, 2.0);
-                    g.endFill();
+                var barX0 = ArtToPx(PlateContentL, scale);
+                var barX1 = ArtToPx(PlateContentR, scale);
+                var barY0 = ArtToPx(slot.BarTopArt, scale);
+                var barY1 = ArtToPx(slot.BarTopArt + PlateBarH, scale);
+                var barBack = state switch
+                {
+                    PartyState.Downed => ColorBarBackDowned,
+                    PartyState.Out => ColorBarBackOut,
+                    _ => ColorBarBack
+                };
 
-                    g.beginFill(Ref<int>.From(ref fillShade), Ref<double>.From(ref fullAlpha));
-                    g.drawRect(PartyBarX, PartyBarY + PartyBarH - 2.0, fillW, 2.0);
-                    g.endFill();
+                FillRect(g, barX0 - px, barY0 - px, barX1 + px, barY1 + px, ColorEdge, 1.0);
+                FillRect(g, barX0, barY0, barX1, barY1, barBack, 1.0);
+
+                if (state == PartyState.Alive && life > 0)
+                {
+                    var fillPx = System.Math.Max(1.0, System.Math.Round((barX1 - barX0) * life / (double)maxLife));
+                    var fillX1 = barX0 + fillPx;
+                    FillRect(g, barX0, barY0, fillX1, barY1, hpFill, 1.0);
+                    FillRect(g, barX0, barY0, fillX1, barY0 + px, hpHighlight, 1.0);
+                    FillRect(g, barX0, barY1 - px, fillX1, barY1, hpShade, 1.0);
                 }
 
-                // Segment dividers across the whole bar (visible over the fill, near-invisible
-                // over the dark empty part), like the notched bar in the mockup.
-                for (int i = 1; i < PartyBarSegments; i++)
+                for (var i = 1; i < PlateBarTicks; i++)
                 {
-                    var dividerX = PartyBarX + PartyBarW * i / PartyBarSegments - 1.0;
-                    g.beginFill(Ref<int>.From(ref barBorder), Ref<double>.From(ref fullAlpha));
-                    g.drawRect(dividerX, PartyBarY, 2.0, PartyBarH);
-                    g.endFill();
+                    var tickX = barX0 + System.Math.Round((barX1 - barX0) * i / PlateBarTicks) - System.Math.Floor(px * 0.5);
+                    FillRect(g, tickX, barY0, tickX + px, barY1, ColorEdge, 0.45);
                 }
-
-                // --- Name plate (bronze frame, chamfered pixel-art corners, navy inner). ---
-                int plateDark = 0x3A1B12;
-                g.beginFill(Ref<int>.From(ref plateDark), Ref<double>.From(ref fullAlpha));
-                g.drawRect(4.0, 0.0, NamePlateW - 8.0, NamePlateH);
-                g.drawRect(0.0, 4.0, NamePlateW, NamePlateH - 8.0);
-                g.drawRect(2.0, 2.0, NamePlateW - 4.0, NamePlateH - 4.0);
-                g.endFill();
-
-                int plateBronze = 0xA44E32;
-                g.beginFill(Ref<int>.From(ref plateBronze), Ref<double>.From(ref fullAlpha));
-                g.drawRect(6.0, 2.0, NamePlateW - 12.0, NamePlateH - 4.0);
-                g.drawRect(2.0, 6.0, NamePlateW - 4.0, NamePlateH - 12.0);
-                g.drawRect(4.0, 4.0, NamePlateW - 8.0, NamePlateH - 8.0);
-                g.endFill();
-
-                // Lighter bronze top edge for that lit-from-above look.
-                int plateBronzeLight = 0xC66B42;
-                g.beginFill(Ref<int>.From(ref plateBronzeLight), Ref<double>.From(ref fullAlpha));
-                g.drawRect(6.0, 2.0, NamePlateW - 12.0, 2.0);
-                g.endFill();
-
-                // Navy inner window.
-                int plateInnerEdge = 0x2A3A5E;
-                g.beginFill(Ref<int>.From(ref plateInnerEdge), Ref<double>.From(ref fullAlpha));
-                g.drawRect(7.0, 7.0, NamePlateW - 14.0, NamePlateH - 14.0);
-                g.endFill();
-
-                int plateInner = 0x1A2340;
-                g.beginFill(Ref<int>.From(ref plateInner), Ref<double>.From(ref fullAlpha));
-                g.drawRect(8.0, 8.0, NamePlateW - 16.0, NamePlateH - 16.0);
-                g.endFill();
             }
             catch
             {
             }
         }
 
+        void UpdateSpectateHint(string? targetName, int targetCount)
+        {
+            var hud = _hud ?? HUD.Class.ME;
+            var root = hud?.root;
+            if (root == null ||
+                string.IsNullOrWhiteSpace(targetName) ||
+                System.Diagnostics.Stopwatch.GetTimestamp() < _hudReadyAfterTicks)
+            {
+                HideSpectateHint();
+                return;
+            }
+
+            try
+            {
+                if (_spectateHintTitle == null || _spectateHintTitle.parent == null || !ReferenceEquals(_spectateHintTitle.parent, root))
+                {
+                    RemoveSpectateHint();
+                    _spectateHintTitle = Assets.Class.makeText(
+                        " ".AsHaxeString(),
+                        dc.ui.Text.Class.COLORS.get("WO".AsHaxeString()),
+                        false,
+                        root);
+                    _spectateHintTitle.textColor = ColorSpectateHint;
+                    _spectateHintSub = Assets.Class.makeText(
+                        " ".AsHaxeString(),
+                        dc.ui.Text.Class.COLORS.get("WO".AsHaxeString()),
+                        false,
+                        root);
+                    _spectateHintSub.textColor = ColorSpectateHintSub;
+                }
+
+                var title = string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    DeadCellsMultiplayerMod.I18n.CoopText.T("Spectating {0}"),
+                    targetName.Trim());
+                var sub = targetCount > 1
+                    ? DeadCellsMultiplayerMod.I18n.CoopText.T("Switch player: , / .")
+                    : string.Empty;
+
+                if (!string.Equals(_spectateHintTitleValue, title, StringComparison.Ordinal))
+                {
+                    _spectateHintTitle.set_text(title.AsHaxeString());
+                    _spectateHintTitleValue = title;
+                }
+                if (_spectateHintSub != null && !string.Equals(_spectateHintSubValue, sub, StringComparison.Ordinal))
+                {
+                    _spectateHintSub.set_text((sub.Length == 0 ? " " : sub).AsHaxeString());
+                    _spectateHintSubValue = sub;
+                }
+
+                var scale = CurrentPixelScale(hud);
+                double stageW = dc.libs.Process.Class.CUSTOM_STAGE_WIDTH;
+                double stageH = dc.libs.Process.Class.CUSTOM_STAGE_HEIGHT;
+                if (stageW <= 0 || stageH <= 0)
+                {
+                    var win = dc.hxd.Window.Class.getInstance();
+                    stageW = win?.get_width() ?? 0;
+                    stageH = win?.get_height() ?? 0;
+                }
+
+                var bottom = stageH - ArtToPx(SpectateHintBottomArt, scale);
+                var subHeight = sub.Length == 0 ? 0.0 : MeasureTextHeight(_spectateHintSub);
+                var titleHeight = MeasureTextHeight(_spectateHintTitle);
+
+                _spectateHintTitle.x = System.Math.Floor((stageW - MeasureTextWidth(_spectateHintTitle, title)) * 0.5);
+                _spectateHintTitle.y = System.Math.Floor(bottom - subHeight - titleHeight);
+                _spectateHintTitle.visible = true;
+
+                if (_spectateHintSub != null)
+                {
+                    _spectateHintSub.x = System.Math.Floor((stageW - MeasureTextWidth(_spectateHintSub, sub)) * 0.5);
+                    _spectateHintSub.y = System.Math.Floor(bottom - subHeight);
+                    _spectateHintSub.visible = subHeight > 0;
+                }
+            }
+            catch
+            {
+                HideSpectateHint();
+            }
+        }
+
+        void RenderPartyPreview(Hero self)
+        {
+            var hud = _hud;
+            if (hud == null || _slots.Length == 0)
+                return;
+            if (System.Diagnostics.Stopwatch.GetTimestamp() < _hudReadyAfterTicks)
+                return;
+
+            _previewActive = true;
+            var scale = CurrentPixelScale(hud);
+            var maxLife = System.Math.Max(1, self.maxLife);
+            var rows = new (string Name, int Life, PartyState State, bool Spectated)[]
+            {
+                ("Chifer123536", self.life, PartyState.Alive, true),
+                ("A_really_long_steam_nickname_here", maxLife * 2 / 5, PartyState.Alive, false),
+                ("Беатрис", maxLife / 6, PartyState.Downed, false),
+                ("Guest", 0, PartyState.Out, false)
+            };
+
+            var count = System.Math.Min(rows.Length, _slots.Length);
+            for (var i = 0; i < count; i++)
+            {
+                var slot = _slots[i] ??= CreatePlate(hud, i);
+                if (slot.Scale != scale)
+                    RelayoutPlate(slot, scale);
+                UpdateSlotLabel(slot, rows[i].Name);
+                UpdateLifeBar(slot, rows[i].Life, maxLife, rows[i].State, rows[i].Spectated);
+            }
+
+            UpdateSpectateHint(rows[0].Name, 2);
+        }
+
+        void HideSpectateHint()
+        {
+            try
+            {
+                if (_spectateHintTitle != null)
+                    _spectateHintTitle.visible = false;
+                if (_spectateHintSub != null)
+                    _spectateHintSub.visible = false;
+            }
+            catch
+            {
+            }
+        }
+
+        void RemoveSpectateHint()
+        {
+            try { _spectateHintTitle?.remove(); } catch { }
+            try { _spectateHintSub?.remove(); } catch { }
+            _spectateHintTitle = null;
+            _spectateHintSub = null;
+            _spectateHintTitleValue = null;
+            _spectateHintSubValue = null;
+        }
+
         private void ClearSlots()
         {
+            _previewActive = false;
             if (_slots.Length == 0)
                 return;
 
@@ -753,3 +1012,17 @@ namespace DeadCellsMultiplayerMod.MultiplayerModUI.lifeUI
         }
     }
 }
+
+/*
+ * ═══════════════════════════════════════
+ *  PARTY HUD — КАК РАБОТАЕТ
+ * ═══════════════════════════════════════
+ *  Плашка на напарника в HUD.topRightFlowT (вертикально, по правому краю), отступ снизу PlateGapY.
+ *  Геометрия в арт-пикселях × HUD pixelScale (1080p = 3), края округляются до целых px.
+ *  Текст dc.ui.Text в родном масштабе игры; высота строки и ширины меряются (textHeight,
+ *  calcTextWidth), ник обрезается по реальной ширине с «…». Смена pixelScale → RelayoutPlate.
+ *  Статус: % HP / «Упал» / «Выбыл» (ModEntry.GetRemotePartyState). Цель наблюдения — золотая рамка.
+ *  Подсказка «Наблюдение: ник» внизу по центру, пока свой игрок лежит и камера на напарнике.
+ *  DebugPartyHudPreview: без сети рисует 4 тестовые плашки поверх соло-забега.
+ * ═══════════════════════════════════════
+*/

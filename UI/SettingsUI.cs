@@ -326,6 +326,10 @@ public class SettingsUI :
             MultiplayerSettingsStorage.DebugBossSyncTrace,
             () => MultiplayerSettingsStorage.DebugBossSyncTrace = !MultiplayerSettingsStorage.DebugBossSyncTrace);
 
+        AddToggle(self, parent, T("Preview party HUD"), null,
+            MultiplayerSettingsStorage.DebugPartyHudPreview,
+            () => MultiplayerSettingsStorage.DebugPartyHudPreview = !MultiplayerSettingsStorage.DebugPartyHudPreview);
+
         AddToggle(self, parent, T("Show perf logs"),
             T("Controls threshold-based [Perf] hitch and slowdown logging."),
             MultiplayerSettingsStorage.ShowPerfLogs,
