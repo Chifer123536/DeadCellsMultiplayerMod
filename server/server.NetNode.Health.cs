@@ -104,6 +104,20 @@ public sealed partial class NetNode
                   .Append(" delay=").Append(buffer.TargetDelayMs.ToString("0", CultureInfo.InvariantCulture)).Append("ms");
             }
         }
+
+        if (MobClock.IsSynced &&
+            DeadCellsMultiplayerMod.PortableCore.MobPuppetStats.TryDrain(out var poses, out var extrapolated, out var groundSnaps, out var gated, out var late))
+        {
+            if (sb.Length > 0)
+                sb.Append(' ');
+            sb.Append("mobs int=").Append(MobClock.IntervalMs.ToString("0", CultureInfo.InvariantCulture))
+              .Append(" jit=").Append(MobClock.JitterMs.ToString("0", CultureInfo.InvariantCulture))
+              .Append(" delay=").Append(MobClock.TargetDelayMs.ToString("0", CultureInfo.InvariantCulture)).Append("ms")
+              .Append(" extrap=").Append(poses > 0 ? (extrapolated * 100 / poses).ToString(CultureInfo.InvariantCulture) : "0").Append('%')
+              .Append(" ysnap=").Append(groundSnaps.ToString(CultureInfo.InvariantCulture))
+              .Append(" atk=").Append(gated.ToString(CultureInfo.InvariantCulture))
+              .Append('/').Append(late.ToString(CultureInfo.InvariantCulture));
+        }
         return sb.ToString();
     }
 

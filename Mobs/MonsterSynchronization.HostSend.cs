@@ -271,7 +271,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             var payloadDirty = false;
             HostMobSentState previous;
             var hadPrevious = false;
-            var ft = GetCurrentFrame(mob);
+            var ft = HostWireClockMs();
             double dx = 0.0, dy = 0.0;
             try { dx = mob.dx + mob.bdx; dy = mob.dy + mob.bdy; } catch { }
 

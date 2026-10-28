@@ -7,7 +7,7 @@ namespace DeadCellsMultiplayerMod;
 internal static class BuildInfo
 {
     public const string Version = "0.8.91-coop.6";
-    public const string SourceMarker = "v0.8.91-coop.6-p24";
+    public const string SourceMarker = "v0.8.91-coop.6-p25";
     // Protocol 19: launch convergence, level-boundary identity, sequenced level seeds and ordered player positions.
     //   * The host re-publishes the full launch prerequisite set (GEN/CGDATA/RUNCOMMIT/SEED/
     //     RUNEXEC) until the client confirms, and GEN is host-cached and replayed to late joiners.
@@ -46,6 +46,9 @@ internal static class BuildInfo
     //   * PDOWN state 2 = dead until the next passage (one revive per level); protocol 23 rejects it.
     //   * RVHOLD / RVDONE share revive progress and confirm a revive; the reviver spends the flask
     //     only on RVDONE.
+    // Protocol 25 (coop fork):
+    //   * MOBMOVE / MOBSTATE Time is the host's monotonic clock in ms (was the level frame time);
+    //     clients buffer mob positions on that clock. Protocol 24 reads it as frames.
     // These change how peers interpret the same exchange, so cross-version pairing is rejected.
-    public const int NetworkProtocolVersion = 24;
+    public const int NetworkProtocolVersion = 25;
 }

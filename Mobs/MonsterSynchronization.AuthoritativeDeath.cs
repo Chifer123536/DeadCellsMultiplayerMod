@@ -133,7 +133,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     t.Type,
                     EncodeStatePayloadForWire(t.StatePayload),
                     t.Generation,
-                    frame,
+                    HostWireClockMs(),
                     0.0,
                     0.0));
 

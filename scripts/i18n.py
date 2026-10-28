@@ -140,6 +140,8 @@ RU = {
     "Revived!": "Вас подняли!",
     "Boss Rush could not synchronize with your friend. Approach the door again to retry.": "Босс-раш не синхронизировался с другом. Подойдите к двери ещё раз.",
     "Boss sync trace logging": "Трассировка синхронизации боссов",
+    "Buffered mob movement": "Буферизованное движение мобов",
+    "Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode.": "Клиент показывает врагов по времени хоста с небольшой адаптивной задержкой: плавно и без дрейфа. Выкл.: старый режим подтягивания к последнему пакету.",
     "Show perf logs": "Логи производительности",
     "Preview party HUD": "Превью плашек напарников",
     "Down": "Упал",

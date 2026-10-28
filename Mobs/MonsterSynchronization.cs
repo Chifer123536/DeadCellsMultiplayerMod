@@ -1205,7 +1205,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             if (IsClient(net) && IsSyncMob(self))
             {
                 orig(self);
-                ApplyInterpolatedState(self);
+                if (!TryApplyMobPuppet(self))
+                    ApplyInterpolatedState(self);
                 return;
             }
 

@@ -497,7 +497,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 if (sendState)
                 {
                     var entryBytes = EstimateMobStateWireBytes(stateSnapshot, s_batchSnapshotsScratch.Count);
-                    if (s_batchSnapshotsScratch.Count > 0 && stateBytes + entryBytes > MobWirePacketByteBudget)
+                    if (s_batchSnapshotsScratch.Count > 0 && stateBytes + entryBytes > MobWireReliablePacketByteBudget)
                     {
                         TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch, HostStateSendKind.Dirty);
                         s_batchSnapshotsScratch.Clear();
@@ -523,7 +523,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 }
 
                 var moveEntryBytes = EstimateMobMoveWireBytes(moveSnapshot, s_moveSnapshotsScratch.Count);
-                if (s_moveSnapshotsScratch.Count > 0 && moveBytes + moveEntryBytes > MobWirePacketByteBudget)
+                if (s_moveSnapshotsScratch.Count > 0 && moveBytes + moveEntryBytes > MobWireUnreliablePacketByteBudget)
                 {
                     TrySendHostMovesBatchAsync(net, s_moveSnapshotsScratch);
                     s_moveSnapshotsScratch.Clear();
@@ -838,7 +838,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 }
 
                 var entryBytes = EstimateMobStateWireBytes(stateSnapshot, s_batchSnapshotsScratch.Count);
-                if (s_batchSnapshotsScratch.Count > 0 && stateBytes + entryBytes > MobWirePacketByteBudget)
+                if (s_batchSnapshotsScratch.Count > 0 && stateBytes + entryBytes > MobWireReliablePacketByteBudget)
                 {
                     TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch, kind);
                     s_batchSnapshotsScratch.Clear();
@@ -882,7 +882,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     TryBuildClientDrawUpdate(net, mob, syncId, flags, out var draw))
                 {
                     var drawEntryBytes = EstimateMobDrawWireBytes(draw, s_drawsScratch.Count);
-                    if (s_drawsScratch.Count > 0 && drawBytes + drawEntryBytes > MobWirePacketByteBudget)
+                    if (s_drawsScratch.Count > 0 && drawBytes + drawEntryBytes > MobWireUnreliablePacketByteBudget)
                     {
                         MobSyncTrace.LogSendDrawBatch("client", s_drawsScratch);
                         net.SendMobDrawBatch(s_drawsScratch);
@@ -898,7 +898,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     TryBuildClientAffectStateUpdate(mob, syncId, flags, out var affectSnapshot))
                 {
                     var affectEntryBytes = EstimateMobStateWireBytes(affectSnapshot, s_batchSnapshotsScratch.Count);
-                    if (s_batchSnapshotsScratch.Count > 0 && stateBytes + affectEntryBytes > MobWirePacketByteBudget)
+                    if (s_batchSnapshotsScratch.Count > 0 && stateBytes + affectEntryBytes > MobWireReliablePacketByteBudget)
                     {
                         MobSyncTrace.LogSendStatesBatch("client", s_batchSnapshotsScratch);
                         net.SendMobStates(s_batchSnapshotsScratch);
@@ -1124,7 +1124,10 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                    GetInvariantWireLength(snapshot.Y) + 1 +
                    GetInvariantWireLength(snapshot.Dir) + 1 +
                    GetInvariantWireLength(snapshot.Generation) + 1 +
-                   GetUtf8WireLength(snapshot.AnimPayload);
+                   GetUtf8WireLength(snapshot.AnimPayload) + 1 +
+                   GetInvariantWireLength(snapshot.Time) + 1 +
+                   GetInvariantWireLength(snapshot.Dx) + 1 +
+                   GetInvariantWireLength(snapshot.Dy);
         }
 
         private static int EstimateMobDrawWireBytes(NetNode.MobDraw draw, int currentCount)

@@ -163,6 +163,7 @@ public sealed partial class NetNode
             if (MobWireBinary.TryParseMobStatesBase64(payload, parsedStates))
             {
                 MobSyncTrace.RecordWireReceive("state", parsedStates.Count, line.Length);
+                ObserveMobClock(parsedStates);
                 lock (_sync)
                 {
                     // MOBSTATE packets are often split into multiple wire lines when a level has
@@ -187,6 +188,7 @@ public sealed partial class NetNode
             var payload = line["MOBSTATE|".Length..];
             var parsedStates = ParseMobStatesPayload(payload);
             MobSyncTrace.RecordWireReceive("state", parsedStates.Count, line.Length);
+            ObserveMobClock(parsedStates);
             lock (_sync)
             {
                 // MOBSTATE packets can be chunked. Appending on the client is required so a
@@ -222,6 +224,7 @@ public sealed partial class NetNode
             {
                 var payload = line["MOBMOVE|".Length..];
                 var parsedMoves = ParseMobMovesPayload(payload);
+                ObserveMobClock(parsedMoves);
                 lock (_sync)
                 {
                     if (parsedMoves.Count > 0)

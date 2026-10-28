@@ -265,8 +265,9 @@ public sealed partial class NetNode
         public readonly double ForcedDirSeconds;
         public readonly string Type;
         public readonly int AttackSeq;
+        public readonly double HostMs;
 
-        public MobAttack(int index, string skillId, bool requiresTargetInArea, int? data, double x, double y, int targetUserId, int dir = 0, double blockSeconds = 0, double forcedDirSeconds = 0, string type = "", int generation = 0, int attackSeq = 0)
+        public MobAttack(int index, string skillId, bool requiresTargetInArea, int? data, double x, double y, int targetUserId, int dir = 0, double blockSeconds = 0, double forcedDirSeconds = 0, string type = "", int generation = 0, int attackSeq = 0, double hostMs = 0)
         {
             Index = index;
             Generation = generation;
@@ -281,6 +282,7 @@ public sealed partial class NetNode
             ForcedDirSeconds = forcedDirSeconds;
             Type = type ?? string.Empty;
             AttackSeq = attackSeq;
+            HostMs = double.IsFinite(hostMs) && hostMs > 0 ? hostMs : 0;
         }
     }
 

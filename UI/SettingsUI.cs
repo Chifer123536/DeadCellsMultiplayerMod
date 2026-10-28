@@ -318,6 +318,11 @@ public class SettingsUI :
             MultiplayerSettingsStorage.SyncVerticalPosition,
             () => MultiplayerSettingsStorage.SyncVerticalPosition = !MultiplayerSettingsStorage.SyncVerticalPosition);
 
+        AddToggle(self, parent, T("Buffered mob movement"),
+            T("Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode."),
+            MultiplayerSettingsStorage.MobPuppets,
+            () => MultiplayerSettingsStorage.MobPuppets = !MultiplayerSettingsStorage.MobPuppets);
+
         AddToggle(self, parent, T("Mobs sync trace logging"), null,
             MultiplayerSettingsStorage.DebugMobsSyncTrace,
             () => MultiplayerSettingsStorage.DebugMobsSyncTrace = !MultiplayerSettingsStorage.DebugMobsSyncTrace);

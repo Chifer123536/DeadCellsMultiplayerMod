@@ -58,7 +58,9 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             // Phase 3: per-boss monotonic attack sequence (0 for non-bosses) so the client can drop
             // replayed / out-of-order boss attacks deterministically via a high-water mark.
             var attackSeq = NextHostBossAttackSeq(mob);
-            var attackEvent = $"attack|{encodedSkill}|0|0|{reqTarget}|{dataVal}|{targetUserId}|{dir}|{attackSeq}";
+            var attackEvent = string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"attack|{encodedSkill}|0|0|{reqTarget}|{dataVal}|{targetUserId}|{dir}|{attackSeq}|{(long)HostWireClockMs()}");
             var mobType = BuildMobStateTypeSignature(mob);
             var update = new NetNode.MobEventUpdate(mobSyncId, x, y, dir, SingleEvent(attackEvent), mobType, identityToken);
             MobSyncTrace.LogSendMobEvents(MobSyncNetRoleForTrace(net), SingleUpdate(update));

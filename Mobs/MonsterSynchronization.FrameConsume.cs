@@ -27,6 +27,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             ConsumeIncomingHostMobStates(net);
             ConsumeIncomingHostMobMoves(net);
             ConsumeIncomingHostMobAttacks(net);
+            ReleaseDueMobPuppetAttacks();
             RetryPendingClientBossAttacks();
             ConsumeIncomingMobDies(net);
             ConsumeIncomingMobHits(net);

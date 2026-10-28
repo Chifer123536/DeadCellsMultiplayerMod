@@ -518,6 +518,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             s_pendingCulledMobDeaths.Clear();
             s_pendingCulledMobDeathFirstFrame.Clear();
             clientMobTargets.Clear();
+            ClearMobPuppetsLocked();
             clientCachedAttackTargetByMob.Clear();
             clientQueuedOldSkillMarkers.Clear();
             hostLastSentContactTargetUserIdByMob.Clear();
@@ -693,6 +694,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             // only alias-local caches; never remove IdToMob/MobToId owned by the canonical wrapper.
             s_mobSyncAliases.Remove(mob);
             clientMobTargets.Remove(mob);
+            RemoveMobPuppetLocked(mob);
             clientCachedAttackTargetByMob.Remove(mob);
             clientQueuedOldSkillMarkers.Remove(mob);
             hostLastSentContactTargetUserIdByMob.Remove(mob);
@@ -845,6 +847,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             }
             trackedMobIndices.Remove(mob);
             clientMobTargets.Remove(mob);
+            RemoveMobPuppetLocked(mob);
             clientCachedAttackTargetByMob.Remove(mob);
             clientQueuedOldSkillMarkers.Remove(mob);
             hostLastSentContactTargetUserIdByMob.Remove(mob);

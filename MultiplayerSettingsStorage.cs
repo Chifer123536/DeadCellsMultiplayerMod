@@ -35,6 +35,8 @@ public sealed class MultiplayerSettingsData
 
     public bool SyncVerticalPosition { get; set; } = false;
 
+    public bool MobPuppets { get; set; } = true;
+
     public bool SteamAchievements { get; set; } = true;
 
     public bool ShareAchievements { get; set; } = true;
@@ -313,6 +315,27 @@ public static class MultiplayerSettingsStorage
                     return;
 
                 data.SyncVerticalPosition = value;
+                SaveUnsafe();
+            }
+        }
+    }
+
+    public static bool MobPuppets
+    {
+        get
+        {
+            lock (SyncRoot)
+                return EnsureDataNormalizedUnsafe().MobPuppets;
+        }
+        set
+        {
+            lock (SyncRoot)
+            {
+                var data = EnsureDataNormalizedUnsafe();
+                if (data.MobPuppets == value)
+                    return;
+
+                data.MobPuppets = value;
                 SaveUnsafe();
             }
         }

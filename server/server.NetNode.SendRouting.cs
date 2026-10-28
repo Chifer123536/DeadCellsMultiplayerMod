@@ -102,6 +102,16 @@ public sealed partial class NetNode
     private static bool IsReliableSteamSend(EP2PSend sendType) =>
         sendType == EP2PSend.k_EP2PSendReliable || sendType == EP2PSend.k_EP2PSendReliableWithBuffering;
 
+    const int SteamUnreliableMaxBytes = 1200;
+
+    static EP2PSend FitSteamSendType(EP2PSend sendType, int byteCount)
+    {
+        if (byteCount <= SteamUnreliableMaxBytes || IsReliableSteamSend(sendType))
+            return sendType;
+        NetHealth.RecordUnreliablePromoted();
+        return EP2PSend.k_EP2PSendReliable;
+    }
+
     private int GetSteamOutgoingChannel()
     {
         return _role == NetRole.Host
@@ -177,7 +187,6 @@ public sealed partial class NetNode
                     steamSnapshot.Add(c);
             }
             if (steamSnapshot.Count == 0) return;
-            var sendType = ResolveSteamSendType(line);
             var channel = SteamP2PChannelHostToClient;
             var encoded = ProtocolWire.Encode(line, MaxProtocolLineChars);
             if (!encoded.Success)
@@ -186,6 +195,7 @@ public sealed partial class NetNode
                 return;
             }
             var bytes = encoded.Bytes;
+            var sendType = FitSteamSendType(ResolveSteamSendType(line), bytes.Length);
             NetHealth.RecordSent(line, bytes.Length, IsReliableSteamSend(sendType));
             foreach (var client in steamSnapshot)
             {
@@ -311,7 +321,7 @@ public sealed partial class NetNode
             return Task.CompletedTask;
         }
         var bytes = encoded.Bytes;
-        var st = sendType ?? ResolveSteamSendType(line);
+        var st = FitSteamSendType(sendType ?? ResolveSteamSendType(line), bytes.Length);
         NetHealth.RecordSent(line, bytes.Length, IsReliableSteamSend(st));
         if (!_steamBridge.TrySend(client.SteamId.m_SteamID, st, SteamP2PChannelHostToClient, bytes, out var err))
         {
@@ -334,6 +344,7 @@ public sealed partial class NetNode
                 MaxProtocolLineChars);
             return Task.CompletedTask;
         }
+        sendType = FitSteamSendType(sendType, bytes.Length);
         NetHealth.RecordSent(line, bytes.Length, IsReliableSteamSend(sendType));
 
         if (!_steamBridge.TrySend(steamId, sendType, channel, bytes, out var err))

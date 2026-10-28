@@ -851,12 +851,15 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
         {
             ClientMobState target;
             var shouldApplyAnimThisFrame = true;
+            var puppetAnim = string.Empty;
+            var isPuppet = false;
             lock (Sync)
             {
                 if (!clientMobTargets.TryGetValue(self, out target))
                     return;
 
                 shouldApplyAnimThisFrame = ShouldApplyClientAnimationForFrameLocked(self);
+                isPuppet = TryGetMobPuppetAnimLocked(self, out puppetAnim);
             }
 
             // While a boss-intro cinematic is running locally, the cine script owns the boss.
@@ -870,9 +873,12 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             if (!ShouldProcessClientVisualState(self))
                 return;
 
-            var responsiveDir = ComputeResponsiveFacingDir(self, target);
-            if (responsiveDir != 0)
-                self.dir = responsiveDir;
+            if (!isPuppet)
+            {
+                var responsiveDir = ComputeResponsiveFacingDir(self, target);
+                if (responsiveDir != 0)
+                    self.dir = responsiveDir;
+            }
 
             if (HasLocalQueuedOrChargingSkill(self))
                 return;
@@ -886,7 +892,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             if (!shouldApplyAnimThisFrame)
                 return;
 
-            if (ApplyAnimPayload(self, target.AnimPayload) && BossSyncHelpers.IsBossMob(self))
+            if (ApplyAnimPayload(self, isPuppet ? puppetAnim : target.AnimPayload) && BossSyncHelpers.IsBossMob(self))
                 MarkClientBossSkillCallbackLease(self);
         }
 

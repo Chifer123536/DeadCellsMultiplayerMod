@@ -55,6 +55,7 @@ internal static class NetHealth
     static long s_unreliableBytes;
     static long s_sendErrors;
     static long s_budgetDrops;
+    static long s_promoted;
     static string? s_lastSendError;
     static long s_rttCount;
     static long s_rttSumUs;
@@ -173,6 +174,11 @@ internal static class NetHealth
         Interlocked.Increment(ref s_budgetDrops);
     }
 
+    public static void RecordUnreliablePromoted()
+    {
+        Interlocked.Increment(ref s_promoted);
+    }
+
     public static void RecordRtt(double ms)
     {
         if (!double.IsFinite(ms) || ms < 0.0 || ms > 600_000.0)
@@ -233,6 +239,7 @@ internal static class NetHealth
         var unreliable = Interlocked.Exchange(ref s_unreliableBytes, 0);
         var sendErrors = Interlocked.Exchange(ref s_sendErrors, 0);
         var budgetDrops = Interlocked.Exchange(ref s_budgetDrops, 0);
+        var promoted = Interlocked.Exchange(ref s_promoted, 0);
         var lastError = Interlocked.Exchange(ref s_lastSendError, null);
         var rttCount = Interlocked.Exchange(ref s_rttCount, 0);
         var rttSum = Interlocked.Exchange(ref s_rttSumUs, 0);
@@ -285,8 +292,8 @@ internal static class NetHealth
         sb.Append(" | in ").Append(Rate(Sum(recvBytes), elapsedSeconds)).Append("KB/s ")
           .Append(PerSecond(Sum(recvLines), elapsedSeconds)).Append("/s: ")
           .Append(FormatKinds(recvLines, recvBytes, elapsedSeconds, TopKinds));
-        if (sendErrors > 0 || budgetDrops > 0)
-            sb.Append(" | err=").Append(sendErrors).Append(" drop=").Append(budgetDrops);
+        if (sendErrors > 0 || budgetDrops > 0 || promoted > 0)
+            sb.Append(" | err=").Append(sendErrors).Append(" drop=").Append(budgetDrops).Append(" big=").Append(promoted);
         log.Information(sb.ToString());
 
         if (relay >= 0 && relay != Volatile.Read(ref s_loggedRelay))
@@ -397,9 +404,12 @@ internal static class NetHealth
  *  Раз в 5 с одна строка [NetHealth]: rtt=avg/max надёжного канала (PING|t → PONG|t),
  *  steamQ=avg/max КБ в очереди отправки Steam (GetP2PSessionState), congested=% времени очередь ≥ 24 КБ,
  *  relay, lag=avg/max мс от прихода строки до главного потока, motion — буфер позиций напарника
- *  (int — интервал пакетов, jit — джиттер, delay — задержка интерполяции), out/in КБ/с и строк/с по типам (топ-7).
+ *  (int — интервал пакетов, jit — джиттер, delay — задержка интерполяции) и кукол мобов
+ *  (extrap — доля поз с экстраполяцией, ysnap — правки Y на земле, atk — придержано/по таймауту),
+ *  out/in КБ/с и строк/с по типам (топ-7).
  *  Байты исходящих — UTF-8 одной копии строки; входящих — длина строки.
  *  Только PING/PONG в окне → строка не чаще раза в 30 с.
+ *  err/drop/big: ошибки SendP2PPacket, сброс бюджетом реалтайма, ненадёжные > 1200 байт, ушедшие надёжно.
  *  WARN: rtt ≥ 800 мс, очередь ≥ 64 КБ, lag ≥ 400 мс, ошибки отправки, тишина от пира целое окно.
  *  TryFlush зовёт цикл keep-alive NetNode (100 мс); счётчики Interlocked, писать можно из любого потока.
  * ═══════════════════════════════════════

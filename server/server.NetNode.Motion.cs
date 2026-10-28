@@ -22,6 +22,8 @@ public sealed partial class NetNode
 
     [ThreadStatic] static double _dispatchArrivalMs;
 
+    internal static readonly HostSnapshotClock MobClock = new();
+
     internal static double MonotonicMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
     static double ArrivalMs() => _dispatchArrivalMs > 0.0 ? _dispatchArrivalMs : MonotonicMs();
@@ -130,6 +132,34 @@ public sealed partial class NetNode
                 AddBoundedLocked(_pendingAttacks, next.Attack, PendingAttackLimit);
             }
         }
+    }
+
+    void ObserveMobClock(List<MobStateSnapshot> states)
+    {
+        if (_role != NetRole.Client)
+            return;
+        var newest = 0.0;
+        for (var i = 0; i < states.Count; i++)
+        {
+            if (states[i].Time > newest)
+                newest = states[i].Time;
+        }
+        if (newest > 0.0)
+            MobClock.Observe(newest, ArrivalMs(), realtime: false);
+    }
+
+    void ObserveMobClock(List<MobMoveSnapshot> moves)
+    {
+        if (_role != NetRole.Client)
+            return;
+        var newest = 0.0;
+        for (var i = 0; i < moves.Count; i++)
+        {
+            if (moves[i].Time > newest)
+                newest = moves[i].Time;
+        }
+        if (newest > 0.0)
+            MobClock.Observe(newest, ArrivalMs(), realtime: true);
     }
 
     void ResetRemoteMotionLocked(RemotePlayerState state)

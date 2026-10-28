@@ -126,7 +126,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
         private const string OldSkillChargeCompletePacketPrefix = "@oldcc:";
         private const string OldSkillExecutePacketPrefix = "@oldexec:";
         private const string NewSkillExecutePacketPrefix = "@newexec:";
-        private const int MobWirePacketByteBudget = 4096;
+        const int MobWireReliablePacketByteBudget = 4096;
+        const int MobWireUnreliablePacketByteBudget = 1100;
         /// <summary>
         /// MOBDRAW is sent unreliably; a lost interest-granting draw used to strand the host
         /// relevance gate forever. Re-assert interest this often (~2s at 30fps) while visible.

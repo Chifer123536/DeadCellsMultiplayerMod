@@ -734,26 +734,34 @@ msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; 
 msgstr "Применяет вертикальную позицию хоста к мобам под гравитацией. Выкл.: для ходячих только X; летающие по-прежнему синхронизируют Y. Вкл.: меньше рассинхрона, но наземные мобы могут дёргаться."
 
 #: UI/SettingsUI.cs:321
+msgid "Buffered mob movement"
+msgstr "Буферизованное движение мобов"
+
+#: UI/SettingsUI.cs:322
+msgid "Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode."
+msgstr "Клиент показывает врагов по времени хоста с небольшой адаптивной задержкой: плавно и без дрейфа. Выкл.: старый режим подтягивания к последнему пакету."
+
+#: UI/SettingsUI.cs:326
 msgid "Mobs sync trace logging"
 msgstr "Журнал трассировки синхронизации мобов"
 
-#: UI/SettingsUI.cs:325
+#: UI/SettingsUI.cs:330
 msgid "Boss sync trace logging"
 msgstr "Трассировка синхронизации боссов"
 
-#: UI/SettingsUI.cs:329
+#: UI/SettingsUI.cs:334
 msgid "Preview party HUD"
 msgstr "Превью плашек напарников"
 
-#: UI/SettingsUI.cs:333
+#: UI/SettingsUI.cs:338
 msgid "Show perf logs"
 msgstr "Логи производительности"
 
-#: UI/SettingsUI.cs:334
+#: UI/SettingsUI.cs:339
 msgid "Controls threshold-based [Perf] hitch and slowdown logging."
 msgstr "Запись подвисаний и замедлений [Perf] в лог."
 
-#: UI/SettingsUI.cs:378
+#: UI/SettingsUI.cs:383
 msgid "Extra multiplier on top of co-op difficulty. Set by the host."
 msgstr "Дополнительный множитель поверх кооп-сложности. Задаёт хост."
 

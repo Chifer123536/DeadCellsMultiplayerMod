@@ -350,6 +350,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         GetCurrentFrame(mob),
                         forcePositionSnap,
                         forceVerticalPositionSnap);
+                    if (positionFresh)
+                        PushMobPuppetSampleLocked(mob, state.Time, state.X, state.Y, incomingDir, state.Dx, state.Dy, mergedAnimPayload, forcePositionSnap);
                 }
             }
 
@@ -454,6 +456,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                             GetCurrentFrame(mob),
                             forcePositionSnap,
                             forceVerticalPositionSnap);
+                        PushMobPuppetSampleLocked(mob, move.Time, move.X, move.Y, NormalizeDir(move.Dir), move.Dx, move.Dy, mergedAnimPayload, forcePositionSnap);
                     }
                 }
             }
@@ -949,6 +952,9 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 // motion, cleanup and dialogue often run for many later updates.  The client queue
                 // guard still prevents the replica from choosing unrelated attacks, while the
                 // presentation lease below lets the host-selected skill finish its vanilla lifecycle.
+                if (TryGateMobPuppetAttack(mob, attack))
+                    continue;
+
                 TryQueueClientMobAttack(mob, attack.SkillId, attack.RequiresTargetInArea, attack.Data, attack.TargetUserId, attack.Dir);
                 // Phase 3 fix: only now that the attack was dispatched to the client attack
                 // processor is the sequence considered applied. An attack that was buffered (mob

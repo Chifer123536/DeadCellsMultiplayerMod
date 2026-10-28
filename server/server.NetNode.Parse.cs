@@ -479,7 +479,7 @@ public sealed partial class NetNode
         return true;
     }
 
-    /// <summary>Parse attack event: attack|skillId|blockSec|forcedDirSec|reqTarget|data|targetUid|dir[|attackSeq] (8-9 parts)</summary>
+    /// <summary>Parse attack event: attack|skillId|blockSec|forcedDirSec|reqTarget|data|targetUid|dir[|attackSeq[|hostMs]] (8-10 parts)</summary>
     private static bool TryParseMobAttackEvent(string ev, int index, double x, double y, int dir, string type, int generation, out MobAttack attack)
     {
         attack = default;
@@ -522,7 +522,11 @@ public sealed partial class NetNode
         if (parts.Length > 8)
             int.TryParse(parts[8], NumberStyles.Integer, CultureInfo.InvariantCulture, out attackSeq);
 
-        attack = new MobAttack(index, skillId, requiresTargetInArea, data, x, y, targetUserId, attackDir != 0 ? attackDir : dir, blockSec, forcedDirSec, type ?? string.Empty, generation, attackSeq);
+        var hostMs = 0.0;
+        if (parts.Length > 9)
+            double.TryParse(parts[9], NumberStyles.Float, CultureInfo.InvariantCulture, out hostMs);
+
+        attack = new MobAttack(index, skillId, requiresTargetInArea, data, x, y, targetUserId, attackDir != 0 ? attackDir : dir, blockSec, forcedDirSec, type ?? string.Empty, generation, attackSeq, hostMs);
         return true;
     }
 

@@ -95,6 +95,9 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 if (!shouldReport)
                     return;
 
+                if (isClient)
+                    MarkMobPuppetLocalHit(self);
+
                 if (System.Threading.Volatile.Read(ref suppressMobHitSendDepth) > 0)
                     return;
 
