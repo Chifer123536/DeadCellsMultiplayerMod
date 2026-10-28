@@ -5,6 +5,7 @@ using DeadCellsMultiplayerMod.Interaction;
 using DeadCellsMultiplayerMod.AdvancedCoop;
 using DeadCellsMultiplayerMod.Mobs.MobsSynchronization;
 using DeadCellsMultiplayerMod.Network;
+using DeadCellsMultiplayerMod.PortableCore;
 
 public sealed partial class NetNode
 {
@@ -105,6 +106,9 @@ public sealed partial class NetNode
         if (string.IsNullOrEmpty(line))
             return false;
 
+        if (TryHandleKeepAliveFastPath(line, senderId))
+            return true;
+
         if (TryHandleMobTrafficFastPath(line, senderId))
             return true;
 
@@ -134,8 +138,6 @@ public sealed partial class NetNode
                 return false;
 
             NetNodeMobTrafficStats.RecordFastPathLine();
-            NetTrafficDiagnostics.RecordReceived(line.Length);
-            NetTrafficDiagnostics.TryFlush(_log, _role.ToString());
             return true;
         }
         catch (Exception ex)
@@ -330,6 +332,22 @@ public sealed partial class NetNode
                 }
                 if (hasDieToForward)
                     forwardLine = line;
+            }
+            return true;
+        }
+
+        if (line.StartsWith("MOBAUDIT|", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_role == NetRole.Host)
+                return true;
+
+            if (MobAuditWire.TryParse(line["MOBAUDIT|".Length..], out var audit))
+            {
+                lock (_sync)
+                {
+                    _pendingMobAudit = audit;
+                    _hasRemote = true;
+                }
             }
             return true;
         }

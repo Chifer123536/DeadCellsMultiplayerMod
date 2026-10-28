@@ -482,6 +482,15 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     break;
                 if (mob == null)
                     continue;
+                if ((flags & (HostMobDirtyFlags.State | HostMobDirtyFlags.ForceState)) != 0 &&
+                    ShouldDeferHostStateForCongestion(syncId, flags))
+                {
+                    lock (Sync)
+                    {
+                        EnqueueHostMobDirtyLocked(syncId, flags);
+                    }
+                    continue;
+                }
                 if (!TryBuildHostDirtySnapshotForQueue(mob, syncId, flags, out var sendState, out var stateSnapshot, out var moveSnapshot))
                     continue;
 
@@ -490,11 +499,13 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     var entryBytes = EstimateMobStateWireBytes(stateSnapshot, s_batchSnapshotsScratch.Count);
                     if (s_batchSnapshotsScratch.Count > 0 && stateBytes + entryBytes > MobWirePacketByteBudget)
                     {
-                        TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch);
+                        TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch, HostStateSendKind.Dirty);
                         s_batchSnapshotsScratch.Clear();
                         stateBytes = GetWireLineBaseBytes("MOBSTATE|");
                     }
 
+                    if ((flags & HostMobDirtyFlags.ForceState) != 0)
+                        s_hostForceStateEntries++;
                     RecordHostMobSendFrame(syncId);
                     s_batchSnapshotsScratch.Add(stateSnapshot);
                     stateBytes += entryBytes;
@@ -526,7 +537,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
             if (s_batchSnapshotsScratch.Count > 0)
             {
-                TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch);
+                TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch, HostStateSendKind.Dirty);
                 s_batchSnapshotsScratch.Clear();
             }
 
@@ -537,7 +548,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             }
         }
 
-        private static void TrySendHostStatesBatchAsync(NetNode net, List<NetNode.MobStateSnapshot> batch)
+        private static void TrySendHostStatesBatchAsync(NetNode net, List<NetNode.MobStateSnapshot> batch, HostStateSendKind kind)
         {
             MobSyncTrace.LogSendStatesBatch("host", batch);
             try
@@ -545,7 +556,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 // Test build: keep host authority packets on the game/network frame path instead
                 // of scheduling background sends. It removes one source of stale old-level packets
                 // racing with level disposal/rebuild while keeping the existing wire protocol.
-                net.SendMobStates(batch);
+                RecordHostStateBatch(kind, batch, net.SendMobStates(batch));
             }
             catch (Exception ex)
             {
@@ -558,7 +569,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             MobSyncTrace.LogSendMovesBatch("host", batch);
             try
             {
-                net.SendMobMoves(batch);
+                RecordHostMoveBatch(batch.Count, net.SendMobMoves(batch));
             }
             catch (Exception ex)
             {
@@ -568,16 +579,23 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
         private static bool IsHostMobMoveDue(Mob mob, int syncId)
         {
-            var interval = GetHostMobMoveInterval(mob);
-            if (interval <= 0)
+            var baseInterval = GetHostMobMoveInterval(mob);
+            if (baseInterval <= 0)
                 return true;
+            var interval = mob == null
+                ? baseInterval
+                : ScaleHostMoveIntervalForCongestion(baseInterval, GetHostMobSyncPriority(mob));
 
             lock (Sync)
             {
                 if (hostLastSendFrameBySyncId.TryGetValue(syncId, out var lastFrame))
                 {
-                    var frame = GetCurrentFrame(mob);
-                    return frame - lastFrame >= interval;
+                    var elapsed = GetCurrentFrame(mob) - lastFrame;
+                    if (elapsed >= interval)
+                        return true;
+                    if (elapsed >= baseInterval)
+                        s_hostDeferredMoves++;
+                    return false;
                 }
 
                 return true;
@@ -678,27 +696,46 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                         : 0;
                 }
 
-                if (frame - s_lastHostBossReliableKeyframeFrame >= HostBossReliableKeyframeIntervalFrames)
+                var congested = s_hostSendCongested;
+                var bossSince = frame - s_lastHostBossReliableKeyframeFrame;
+                if (bossSince >= (congested ? HostCongestedBossKeyframeIntervalFrames : HostBossReliableKeyframeIntervalFrames))
                 {
                     s_lastHostBossReliableKeyframeFrame = frame;
                     sendBoss = true;
                 }
+                else if (congested && bossSince >= HostBossReliableKeyframeIntervalFrames)
+                {
+                    s_hostSkippedBossPasses++;
+                }
 
-                if (frame - s_lastHostActiveReliableKeyframeFrame >= HostActiveReliableKeyframeIntervalFrames)
+                var activeSince = frame - s_lastHostActiveReliableKeyframeFrame;
+                if (activeSince >= (congested ? HostCongestedActiveKeyframeIntervalFrames : HostActiveReliableKeyframeIntervalFrames))
                 {
                     s_lastHostActiveReliableKeyframeFrame = frame;
                     sendActive = true;
                 }
+                else if (congested && activeSince >= HostActiveReliableKeyframeIntervalFrames)
+                {
+                    s_hostSkippedActivePasses++;
+                }
 
-                var catchUpInterval = s_hostAuthoritativeBootstrapResyncsRemaining > 0
+                var bootstrapPending = s_hostAuthoritativeBootstrapResyncsRemaining > 0;
+                var catchUpInterval = bootstrapPending
                     ? HostAuthoritativeBootstrapResyncIntervalFrames
                     : HostAuthoritativeFullResyncIntervalFrames;
                 if (frame - s_lastHostAuthoritativeFullResyncFrame >= catchUpInterval)
                 {
-                    s_lastHostAuthoritativeFullResyncFrame = frame;
-                    if (s_hostAuthoritativeBootstrapResyncsRemaining > 0)
-                        s_hostAuthoritativeBootstrapResyncsRemaining--;
-                    sendCatchUp = true;
+                    if (congested && !bootstrapPending)
+                    {
+                        s_hostSkippedCatchUpPasses++;
+                    }
+                    else
+                    {
+                        s_lastHostAuthoritativeFullResyncFrame = frame;
+                        if (bootstrapPending)
+                            s_hostAuthoritativeBootstrapResyncsRemaining--;
+                        sendCatchUp = true;
+                    }
                 }
 
                 if (!sendBoss && !sendActive && !sendCatchUp)
@@ -718,11 +755,11 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
             // Pass 1: bosses
             if (sendBoss)
-                FlushHostPriorityResyncPass(net, preferBoss: true, preferActive: false, includeAll: false, bootstrap: false);
+                FlushHostPriorityResyncPass(net, preferBoss: true, preferActive: false, includeAll: false, bootstrap: false, HostStateSendKind.Boss);
 
             // Pass 2: active/visible non-boss
             if (sendActive)
-                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: true, includeAll: false, bootstrap: false);
+                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: true, includeAll: false, bootstrap: false, HostStateSendKind.Active);
 
             // Pass 3: budgeted catch-up for remaining tracked mobs
             if (sendCatchUp)
@@ -730,7 +767,13 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 var bootstrapping = false;
                 lock (Sync)
                     bootstrapping = s_hostAuthoritativeBootstrapResyncsRemaining > 0;
-                FlushHostPriorityResyncPass(net, preferBoss: false, preferActive: false, includeAll: true, bootstrap: bootstrapping);
+                FlushHostPriorityResyncPass(
+                    net,
+                    preferBoss: false,
+                    preferActive: false,
+                    includeAll: true,
+                    bootstrap: bootstrapping,
+                    bootstrapping ? HostStateSendKind.Boot : HostStateSendKind.CatchUp);
             }
 
             s_batchMobsScratch.Clear();
@@ -741,7 +784,8 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             bool preferBoss,
             bool preferActive,
             bool includeAll,
-            bool bootstrap)
+            bool bootstrap,
+            HostStateSendKind kind)
         {
             s_batchSnapshotsScratch.Clear();
             var stateBytes = GetWireLineBaseBytes("MOBSTATE|");
@@ -796,7 +840,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 var entryBytes = EstimateMobStateWireBytes(stateSnapshot, s_batchSnapshotsScratch.Count);
                 if (s_batchSnapshotsScratch.Count > 0 && stateBytes + entryBytes > MobWirePacketByteBudget)
                 {
-                    TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch);
+                    TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch, kind);
                     s_batchSnapshotsScratch.Clear();
                     stateBytes = GetWireLineBaseBytes("MOBSTATE|");
                 }
@@ -812,7 +856,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
             if (s_batchSnapshotsScratch.Count > 0)
             {
-                TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch);
+                TrySendHostStatesBatchAsync(net, s_batchSnapshotsScratch, kind);
                 s_batchSnapshotsScratch.Clear();
             }
         }
@@ -1040,6 +1084,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             hostDirtyFlagsBySyncId.Clear();
             hostDirtyQueuedSyncIds.Clear();
             hostLastSendFrameBySyncId.Clear();
+            ClearHostHealthStateLocked();
             while (hostDirtyMobQueue.Count > 0)
                 hostDirtyMobQueue.Dequeue();
 

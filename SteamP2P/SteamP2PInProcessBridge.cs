@@ -286,6 +286,34 @@ namespace DeadCellsMultiplayerMod
             return false;
         }
 
+        public bool TryGetSendQueue(ulong steamId, out int bytesQueued, out int packetsQueued, out int relay)
+        {
+            bytesQueued = 0;
+            packetsQueued = 0;
+            relay = -1;
+            if (_disposed || steamId == 0UL)
+                return false;
+
+            try
+            {
+                P2PSessionState_t state = default;
+                var ok = ModEntry.RunSteamNetworkingSerialized(() =>
+                    SteamNetworking.GetP2PSessionState(new CSteamID(steamId), out state));
+                if (!ok || state.m_bConnectionActive == 0)
+                    return false;
+
+                bytesQueued = Math.Max(0, state.m_nBytesQueuedForSend);
+                packetsQueued = Math.Max(0, state.m_nPacketsQueuedForSend);
+                relay = state.m_bUsingRelay != 0 ? 1 : 0;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _warnings.Enqueue($"Steam session state read failed: {ex.Message}");
+                return false;
+            }
+        }
+
         public bool TryReadWarning(out string warning) => _warnings.TryDequeue(out warning!);
         public bool TryReadSessionFail(out ulong steamId) => _sessionFails.TryDequeue(out steamId);
 

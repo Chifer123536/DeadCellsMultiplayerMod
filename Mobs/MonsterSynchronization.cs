@@ -130,9 +130,11 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
         internal static void QuiesceForLevelTransition()
         {
-            s_syncQuiescedUntilTicks = System.Diagnostics.Stopwatch.GetTimestamp()
-                + (long)(System.Diagnostics.Stopwatch.Frequency * 8.0);
-            Log.Information("[MobSync] quiesced for level transition");
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            var alreadyQuiesced = s_syncQuiescedUntilTicks != 0 && now < s_syncQuiescedUntilTicks;
+            s_syncQuiescedUntilTicks = now + (long)(System.Diagnostics.Stopwatch.Frequency * 8.0);
+            if (!alreadyQuiesced)
+                Log.Information("[MobSync] quiesced for level transition");
         }
 
         private static bool IsSyncQuiescedForTransition()
@@ -618,6 +620,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 // processing/sending mob state so enemies cannot keep a destroyed remote GhostKing
                 // as their attack or nemesis target after a door, sublevel or boss-cell reload.
                 RunHostPlayerCombatStateRepairIfPending();
+                BeginHostHealthFrame(net);
 
                 var consumeStart = RuntimeHitchWatch.Start();
                 RunHostIncomingFrameConsume(net);
@@ -636,11 +639,13 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                 FlushHostMobRegistry(net);
                 FlushHostPriorityResync(net);
                 FlushHostDeathTombstoneResends(net);
+                FlushHostMobAudit(net);
                 var flushMs = RuntimeHitchWatch.GetElapsedMilliseconds(flushStart);
                 if (flushMs >= RuntimeHitchWatch.MobSyncFlushSlowThresholdMs)
                     RuntimeHitchWatch.LogSlow(modEntry.Logger, "MobsSynchronization.HostFlush", flushMs, BuildRuntimeQueueDetails());
 
                 MobSyncTrace.FlushPerformance("host");
+                FlushMobHealth(net);
 
                 return;
             }
@@ -661,6 +666,7 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
                     RuntimeHitchWatch.LogSlow(modEntry.Logger, "MobsSynchronization.ClientFlush", flushMs, BuildRuntimeQueueDetails());
 
                 MobSyncTrace.FlushPerformance("client");
+                FlushMobHealth(net);
             }
         }
 

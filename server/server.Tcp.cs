@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using DeadCellsMultiplayerMod;
+using DeadCellsMultiplayerMod.Network;
 using Serilog;
 
 public sealed partial class NetNode
@@ -344,6 +345,8 @@ public sealed partial class NetNode
                     if (line.Length == 0)
                         continue;
 
+                    NetHealth.RecordReceived(line);
+
                     // Resolve fast-path lines here rather than after the ordered channel. Mob
                     // traffic needs no game thread, and a control line waiting on a full
                     // main-thread queue would otherwise head-of-line block every movement
@@ -381,11 +384,14 @@ public sealed partial class NetNode
                 while (reader.TryRead(out var line))
                 {
                     var lineCopy = line;
+                    var queuedMs = MonotonicMs();
 
                     await MainThreadPump.EnqueueNetworkMainThreadAsync(() =>
                     {
                         if (!IsCurrentNetworkSession())
                             return;
+
+                        NetHealth.RecordDispatchLag(MonotonicMs() - queuedMs, reader.CanCount ? reader.Count : 0);
 
                         try
                         {

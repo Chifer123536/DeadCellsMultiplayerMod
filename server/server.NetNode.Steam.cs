@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using DeadCellsMultiplayerMod;
 using Steamworks;
+using DeadCellsMultiplayerMod.Network;
 
 public sealed partial class NetNode
 {
@@ -212,6 +213,7 @@ public sealed partial class NetNode
                     TrySendSteamKeepAlive();
                 else
                     TrySendTcpKeepAlive();
+                RunHealthTick();
                 await Task.Delay(SteamKeepAlivePollMs, ct).ConfigureAwait(false);
             }
         }
@@ -247,7 +249,7 @@ public sealed partial class NetNode
         _lastSteamKeepAliveSentTicks = now;
         try
         {
-            _ = SendLineSafe("PING\n");
+            _ = SendLineSafe(BuildPingLine());
         }
         catch (Exception ex)
         {
@@ -565,12 +567,16 @@ public sealed partial class NetNode
                 return;
 
             _lastSteamKeepAliveSentTicks = now;
-            bridge.TrySend(
-                _steamHostId.m_SteamID,
-                EP2PSend.k_EP2PSendReliable,
-                SteamP2PChannelClientToHost,
-                SteamKeepAliveBytes,
-                out _);
+            var clientPing = BuildPingLine();
+            var clientPingBytes = Encoding.UTF8.GetBytes(clientPing);
+            NetHealth.RecordSent(clientPing, clientPingBytes.Length, reliable: true);
+            if (!bridge.TrySend(
+                    _steamHostId.m_SteamID,
+                    EP2PSend.k_EP2PSendReliable,
+                    SteamP2PChannelClientToHost,
+                    clientPingBytes,
+                    out var clientPingError))
+                NetHealth.RecordSendError(clientPingError);
             return;
         }
 
@@ -584,14 +590,18 @@ public sealed partial class NetNode
         }
 
         _lastSteamKeepAliveSentTicks = now;
+        var hostPing = BuildPingLine();
+        var hostPingBytes = Encoding.UTF8.GetBytes(hostPing);
         foreach (var client in clients)
         {
-            bridge.TrySend(
-                client.SteamId.m_SteamID,
-                EP2PSend.k_EP2PSendReliable,
-                SteamP2PChannelHostToClient,
-                SteamKeepAliveBytes,
-                out _);
+            NetHealth.RecordSent(hostPing, hostPingBytes.Length, reliable: true);
+            if (!bridge.TrySend(
+                    client.SteamId.m_SteamID,
+                    EP2PSend.k_EP2PSendReliable,
+                    SteamP2PChannelHostToClient,
+                    hostPingBytes,
+                    out var hostPingError))
+                NetHealth.RecordSendError(hostPingError);
         }
     }
 
@@ -780,6 +790,7 @@ public sealed partial class NetNode
             if (line.Length == 0)
                 continue;
 
+            NetHealth.RecordReceived(line);
             var lineCopy = line;
             if (TryHandleFastPathLine(lineCopy, senderId))
                 continue;
@@ -794,6 +805,9 @@ public sealed partial class NetNode
                     {
                         if (!IsCurrentNetworkSession())
                             return;
+
+                        if (arrivalMs > 0)
+                            NetHealth.RecordDispatchLag(MonotonicMs() - arrivalMs, Volatile.Read(ref _steamMainThreadDispatchBacklog));
 
                         try
                         {

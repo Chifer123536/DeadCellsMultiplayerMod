@@ -62,3 +62,23 @@ This guide addresses common setup issues, launcher behaviors, network questions,
 * Make sure you have installed the **x64** versions of both prerequisites:
   - [.NET 10 Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) *(Desktop or Console runtime)*
   - [Microsoft Visual C++ Redistributable 2015–2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+---
+
+### 7. Reading the co-op sync health in the log
+
+The log is `Dead Cells\coremod\logs\log_latest.log`. Send both players' logs from the same session when reporting a sync problem.
+
+* `[NetHealth]` every 5 s:
+  - `rtt=avg/max ms`: round trip on the reliable channel. Above ~300 ms, mob deaths and hits arrive late.
+  - `steamQ=avg/max KB`, `congested=%`: Steam's outgoing queue. A growing queue means the host sends faster than the link drains.
+  - `relay=yes`: traffic goes through Valve relays, so ping is higher.
+  - `lag=avg/max ms`: how long a network line waited for the game thread.
+  - `motion`: the teammate's position stream: packet interval, jitter, interpolation delay.
+  - `out` / `in`: KB/s and lines/s by message type.
+* `[NetHealth] WARN`: high round trip, queue backlog, slow game thread, send failures, or silence from the peer.
+* `[MobHealth]` every 5 s: on the host, mob snapshots by reason and what was trimmed under congestion; on the client, tracked and mapped mobs and audit results.
+* `[MobAudit]` on the client: every ~2 s the host's living enemies are compared with the client's.
+  - `ok`: in sync.
+  - `DESYNC`: lists `missing` (the host has the enemy, the client does not), `deadOnClient`, `extra` (alive only on the client) and `hp` mismatches as `id:client/host`.
+  - `repair`: the client fixed a mismatch that persisted for several audits.

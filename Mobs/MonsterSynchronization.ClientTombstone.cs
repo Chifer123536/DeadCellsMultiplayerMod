@@ -309,29 +309,6 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
             LogFocusSyncLifecycleLocked(syncId, "RESOLVE_FAIL", reason);
         }
 
-        private static void FlushClientDiagPerfLocked()
-        {
-            if (!IsClient(LobbySession.NetRef))
-                return;
-
-            var frame = GetCurrentFrame(null);
-            if (frame - s_diagLastPerfFlushFrame < 30.0)
-                return;
-
-            s_diagLastPerfFlushFrame = frame;
-            MobSyncTrace.LogClientDiagPerf(
-                s_diagTombstoneLookups,
-                s_diagTombstoneHits,
-                s_diagResolveFails,
-                s_diagHitResolveFails,
-                s_diagMissingSyncPackets);
-            s_diagTombstoneLookups = 0;
-            s_diagTombstoneHits = 0;
-            s_diagResolveFails = 0;
-            s_diagHitResolveFails = 0;
-            s_diagMissingSyncPackets = 0;
-        }
-
         /// <summary>Compares two type signatures by their runtime class key so "Rampager|Rampager" equals "Rampager".</summary>
         private static bool TypesReferToSameMobClass(string? a, string? b)
         {

@@ -828,14 +828,14 @@ public sealed partial class NetNode
         _ = SendLineSafe(line);
     }
 
-    public void SendMobStates(IReadOnlyList<MobStateSnapshot> states)
+    public int SendMobStates(IReadOnlyList<MobStateSnapshot> states)
     {
         if (_role != NetRole.Host && _role != NetRole.Client)
-            return;
+            return 0;
         if (!HasAnyConnection())
-            return;
+            return 0;
         if (states == null || states.Count == 0)
-            return;
+            return 0;
 
         // Prefer binary MOBSTATE2; text MOBSTATE only when disabled via DCCM_MOB_WIRE_TEXT=1
         // or when binary encoding fails.
@@ -846,26 +846,28 @@ public sealed partial class NetNode
             var line = "MOBSTATE2|" + Convert.ToBase64String(bin) + "\n";
             MobSyncTrace.RecordWireSend("state", states.Count, line.Length);
             _ = SendLineSafe(line);
-            return;
+            return line.Length;
         }
 
         var textLine = MobWireCodec.BuildMobStatesLine(states);
         MobSyncTrace.RecordWireSend("state", states.Count, textLine.Length);
         _ = SendLineSafe(textLine);
+        return textLine.Length;
     }
 
-    public void SendMobMoves(IReadOnlyList<MobMoveSnapshot> moves)
+    public int SendMobMoves(IReadOnlyList<MobMoveSnapshot> moves)
     {
         if (_role != NetRole.Host)
-            return;
+            return 0;
         if (!HasAnyConnection())
-            return;
+            return 0;
         if (moves == null || moves.Count == 0)
-            return;
+            return 0;
 
         var line = MobWireCodec.BuildMobMovesLine(moves);
         MobSyncTrace.RecordWireSend("move", moves.Count, line.Length);
         _ = SendLineSafe(line);
+        return line.Length;
     }
 
     public void SendMobAttack(int mobIndex, string skillId, bool requiresTargetInArea, int? data, double x, double y, int targetUserId, int dir = 0, int generation = 0)

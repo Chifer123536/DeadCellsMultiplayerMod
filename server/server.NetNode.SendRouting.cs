@@ -99,6 +99,9 @@ public sealed partial class NetNode
             : EP2PSend.k_EP2PSendReliable;
     }
 
+    private static bool IsReliableSteamSend(EP2PSend sendType) =>
+        sendType == EP2PSend.k_EP2PSendReliable || sendType == EP2PSend.k_EP2PSendReliableWithBuffering;
+
     private int GetSteamOutgoingChannel()
     {
         return _role == NetRole.Host
@@ -149,11 +152,9 @@ public sealed partial class NetNode
 
         if (IsDroppableTcpRealtimeLine(line) && !_realtimePacketBudget.TryConsume(line.Length))
         {
-            NetTrafficDiagnostics.RecordBudgetDrop();
+            NetHealth.RecordBudgetDrop();
             return Task.CompletedTask;
         }
-
-        NetTrafficDiagnostics.TryFlush(_log, _role.ToString());
 
         if (transport.Role == NetRole.Host)
             return BroadcastLineSafe(line);
@@ -185,10 +186,11 @@ public sealed partial class NetNode
                 return;
             }
             var bytes = encoded.Bytes;
-            NetTrafficDiagnostics.RecordSent(bytes.Length);
+            NetHealth.RecordSent(line, bytes.Length, IsReliableSteamSend(sendType));
             foreach (var client in steamSnapshot)
             {
-                _steamBridge.TrySend(client.SteamId.m_SteamID, sendType, channel, bytes, out _);
+                if (!_steamBridge.TrySend(client.SteamId.m_SteamID, sendType, channel, bytes, out var broadcastError))
+                    NetHealth.RecordSendError(broadcastError);
             }
             return;
         }
@@ -253,7 +255,6 @@ public sealed partial class NetNode
             return;
         }
         var bytes = encoded.Bytes;
-        NetTrafficDiagnostics.RecordSent(bytes.Length);
 
         var realtime = IsDroppableTcpRealtimeLine(line);
         var token = _cts?.Token ?? CancellationToken.None;
@@ -268,7 +269,10 @@ public sealed partial class NetNode
             {
                 locked = await sendLock.WaitAsync(0).ConfigureAwait(false);
                 if (!locked)
+                {
+                    NetHealth.RecordBudgetDrop();
                     return;
+                }
             }
             else
             {
@@ -278,12 +282,13 @@ public sealed partial class NetNode
 
             await stream.WriteAsync(bytes.AsMemory(0, bytes.Length), token).ConfigureAwait(false);
             await stream.FlushAsync(token).ConfigureAwait(false);
+            NetHealth.RecordSent(line, bytes.Length, reliable: true);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
-            NetTrafficDiagnostics.RecordSendError();
+            NetHealth.RecordSendError(ex.Message);
             _log.Warning("[NetNode] send error: {msg}", ex.Message);
         }
         finally
@@ -306,10 +311,13 @@ public sealed partial class NetNode
             return Task.CompletedTask;
         }
         var bytes = encoded.Bytes;
-        NetTrafficDiagnostics.RecordSent(bytes.Length);
         var st = sendType ?? ResolveSteamSendType(line);
+        NetHealth.RecordSent(line, bytes.Length, IsReliableSteamSend(st));
         if (!_steamBridge.TrySend(client.SteamId.m_SteamID, st, SteamP2PChannelHostToClient, bytes, out var err))
+        {
+            NetHealth.RecordSendError(err);
             _log.Warning("[NetNode] Steam send failed to {SteamId}: {Error}", client.SteamId.m_SteamID, err);
+        }
         return Task.CompletedTask;
     }
 
@@ -326,10 +334,11 @@ public sealed partial class NetNode
                 MaxProtocolLineChars);
             return Task.CompletedTask;
         }
-        NetTrafficDiagnostics.RecordSent(bytes.Length);
+        NetHealth.RecordSent(line, bytes.Length, IsReliableSteamSend(sendType));
 
         if (!_steamBridge.TrySend(steamId, sendType, channel, bytes, out var err))
         {
+            NetHealth.RecordSendError(err);
             var ctx = line.StartsWith("HELLO", StringComparison.Ordinal) ? " HELLO" : string.Empty;
             _log.Warning("[NetNode] Steam send failed to {SteamId}: {Error}{Context}", steamId, err, ctx);
         }

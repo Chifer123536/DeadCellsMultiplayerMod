@@ -83,6 +83,12 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
                     if (frame - t.LastSentFrame >= HostAuthoritativeDeathTombstoneResendIntervalFrames)
                     {
+                        if (s_hostSendCongested)
+                        {
+                            s_hostSkippedTombstoneResends++;
+                            continue;
+                        }
+
                         t.LastSentFrame = frame;
                         t.SendsRemaining--;
                         s_hostDeathTombstoneScratch.Add(t);
@@ -133,14 +139,14 @@ namespace DeadCellsMultiplayerMod.Mobs.MobsSynchronization
 
                 if (s_hostDeathTombstoneStateScratch.Count >= 32)
                 {
-                    TrySendHostStatesBatchAsync(net, s_hostDeathTombstoneStateScratch);
+                    TrySendHostStatesBatchAsync(net, s_hostDeathTombstoneStateScratch, HostStateSendKind.Tombstone);
                     s_hostDeathTombstoneStateScratch.Clear();
                 }
             }
 
             if (s_hostDeathTombstoneStateScratch.Count > 0)
             {
-                TrySendHostStatesBatchAsync(net, s_hostDeathTombstoneStateScratch);
+                TrySendHostStatesBatchAsync(net, s_hostDeathTombstoneStateScratch, HostStateSendKind.Tombstone);
                 s_hostDeathTombstoneStateScratch.Clear();
             }
 

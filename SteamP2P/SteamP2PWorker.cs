@@ -54,6 +54,7 @@ namespace DeadCellsMultiplayerMod
         bool TryReadPacket(out SteamP2PWorkerPacket packet);
         bool TryReadWarning(out string warning);
         bool TryReadSessionFail(out ulong steamId);
+        bool TryGetSendQueue(ulong steamId, out int bytesQueued, out int packetsQueued, out int relay);
     }
 
     internal sealed class SteamP2PWorkerBridge : ISteamP2PBridge
@@ -284,6 +285,14 @@ namespace DeadCellsMultiplayerMod
                     }
                 }
             }
+        }
+
+        public bool TryGetSendQueue(ulong steamId, out int bytesQueued, out int packetsQueued, out int relay)
+        {
+            bytesQueued = 0;
+            packetsQueued = 0;
+            relay = -1;
+            return false;
         }
 
         public bool TrySend(ulong steamId, EP2PSend sendType, int channel, byte[] payload, out string error)

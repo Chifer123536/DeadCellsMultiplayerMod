@@ -149,9 +149,8 @@ public sealed partial class NetNode : IDisposable
     /// connection loss rather than a loading hitch.
     /// </summary>
     private const double SteamReceiveTimeoutSeconds = 30.0;
-    private const double SteamKeepAliveSeconds = 3.0;
-    private const int SteamKeepAlivePollMs = 500;
-    private static readonly byte[] SteamKeepAliveBytes = Encoding.UTF8.GetBytes("PING\n");
+    private const double SteamKeepAliveSeconds = 1.0;
+    private const int SteamKeepAlivePollMs = 100;
 
     private readonly object _sync = new();
     private bool _hasRemote;

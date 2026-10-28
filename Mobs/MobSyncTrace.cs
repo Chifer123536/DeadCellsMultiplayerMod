@@ -960,6 +960,9 @@ internal static class MobSyncTrace
         int authoritativeClientMobDieDepth,
         string role)
     {
+        if (syncId < 0 && !Enabled)
+            return;
+
         Log.Information(
             "[MobSync] REMOVE_ATTEMPT syncId={SyncId} reason={Reason} destroyed={Destroyed} depth={Depth} role={Role}",
             syncId,
