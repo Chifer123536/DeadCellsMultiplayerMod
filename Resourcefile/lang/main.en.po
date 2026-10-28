@@ -613,19 +613,19 @@ msgstr "Teammate reached the exit. Following in {0} seconds..."
 msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 msgstr "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 
-#: UI/MultiplayerUI.cs:435
+#: UI/MultiplayerUI.cs:432
 msgid "Down"
 msgstr "Down"
 
-#: UI/MultiplayerUI.cs:436
+#: UI/MultiplayerUI.cs:433
 msgid "Out"
 msgstr "Out"
 
-#: UI/MultiplayerUI.cs:701
+#: UI/MultiplayerUI.cs:698
 msgid "Spectating {0}"
 msgstr "Spectating {0}"
 
-#: UI/MultiplayerUI.cs:704
+#: UI/MultiplayerUI.cs:701
 msgid "Switch player: , / ."
 msgstr "Switch player: , / ."
 

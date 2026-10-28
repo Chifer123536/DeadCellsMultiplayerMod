@@ -613,19 +613,19 @@ msgstr "Напарник дошёл до выхода. Переход через
 msgid "Boss Rush could not synchronize with your friend. Approach the door again to retry."
 msgstr "Босс-раш не синхронизировался с другом. Подойдите к двери ещё раз."
 
-#: UI/MultiplayerUI.cs:435
+#: UI/MultiplayerUI.cs:432
 msgid "Down"
 msgstr "Упал"
 
-#: UI/MultiplayerUI.cs:436
+#: UI/MultiplayerUI.cs:433
 msgid "Out"
 msgstr "Выбыл"
 
-#: UI/MultiplayerUI.cs:701
+#: UI/MultiplayerUI.cs:698
 msgid "Spectating {0}"
 msgstr "Наблюдение: {0}"
 
-#: UI/MultiplayerUI.cs:704
+#: UI/MultiplayerUI.cs:701
 msgid "Switch player: , / ."
 msgstr "Сменить игрока: , / ."
 
