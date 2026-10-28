@@ -111,31 +111,31 @@ msgstr "siguiente área"
 msgid "Player {0}"
 msgstr "Jugador {0}"
 
-#: UI/SettingsUI.cs:295
+#: UI/SettingsUI.cs:300
 msgid "Debug"
 msgstr "Depuración"
 
-#: UI/SettingsUI.cs:297
+#: UI/SettingsUI.cs:302
 msgid "Player immortal"
 msgstr "Jugador inmortal"
 
-#: UI/SettingsUI.cs:301
+#: UI/SettingsUI.cs:306
 msgid "Use Explorer's Rune"
 msgstr "Usar la Runa del Explorador"
 
-#: UI/SettingsUI.cs:306
+#: UI/SettingsUI.cs:311
 msgid "Start perk"
 msgstr "Perk inicial"
 
-#: UI/SettingsUI.cs:312
+#: UI/SettingsUI.cs:317
 msgid "Enable mobs sync"
 msgstr "Activar sincronización de enemigos"
 
-#: UI/SettingsUI.cs:316
+#: UI/SettingsUI.cs:321
 msgid "Sync vertical position"
 msgstr "Sincronizar posición vertical"
 
-#: UI/SettingsUI.cs:317
+#: UI/SettingsUI.cs:322
 msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
 msgstr "Aplica la posición vertical del anfitrión a los enemigos con gravedad. Desactivado: solo X para los que caminan; los voladores siguen sincronizando Y. Activado: puede reducir el desfase pero provocar saltos en enemigos en el suelo."
 

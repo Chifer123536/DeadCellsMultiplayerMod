@@ -75,7 +75,9 @@ The log is `Dead Cells\coremod\logs\log_latest.log`. Send both players' logs fro
   - `relay=yes`: traffic goes through Valve relays, so ping is higher.
   - `lag=avg/max ms`: how long a network line waited for the game thread.
   - `motion`: the teammate's position stream: packet interval, jitter, interpolation delay.
+  - `mobs` (client): the enemy buffer: snapshot interval, jitter, display delay; `extrap` is the share of frames past the newest snapshot, `ysnap` counts ground height corrections, `atk=held/late` counts enemy attacks held to the host's timing and those released after 300 ms because snapshots lagged.
   - `out` / `in`: KB/s and lines/s by message type.
+  - `err=` / `drop=` / `big=`: failed Steam sends, realtime lines dropped by the send budget, and unreliable lines over Steam's 1200-byte limit that were sent reliably instead.
 * `[NetHealth] WARN`: high round trip, queue backlog, slow game thread, send failures, or silence from the peer.
 * `[MobHealth]` every 5 s: on the host, mob snapshots by reason and what was trimmed under congestion; on the client, tracked and mapped mobs and audit results.
 * `[MobAudit]` on the client: every ~2 s the host's living enemies are compared with the client's.

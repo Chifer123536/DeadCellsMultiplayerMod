@@ -641,105 +641,105 @@ msgstr "Mod language"
 msgid "Language of the co-op menus. \"As in game\" follows the game language."
 msgstr "Language of the co-op menus. \"As in game\" follows the game language."
 
-#: UI/SettingsUI.cs:208
-msgid "Host settings"
-msgstr "Host settings"
-
-#: UI/SettingsUI.cs:221
-msgid "Co-op difficulty"
-msgstr "Co-op difficulty"
-
-#: UI/SettingsUI.cs:222
-msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
-msgstr "Scales mob health, boss health and mob damage by the number of players. Set by the host."
-
-#: UI/SettingsUI.cs:225
-msgid "Mob health"
-msgstr "Mob health"
-
-#: UI/SettingsUI.cs:231
-msgid "Boss health"
-msgstr "Boss health"
-
-#: UI/SettingsUI.cs:237
-msgid "Mob damage"
-msgstr "Mob damage"
-
-#: UI/SettingsUI.cs:254
-msgid "Scroll pick"
-msgstr "Scroll pick"
-
-#: UI/SettingsUI.cs:255
-msgid "What happens for everyone while a player picks a scroll. Set by the host."
-msgstr "What happens for everyone while a player picks a scroll. Set by the host."
-
-#: UI/SettingsUI.cs:265
-msgid "Achievements"
-msgstr "Achievements"
-
-#: UI/SettingsUI.cs:268
-msgid "Steam achievements"
-msgstr "Steam achievements"
-
-#: UI/SettingsUI.cs:269
-msgid "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
-msgstr "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
-
-#: UI/SettingsUI.cs:274
-msgid "Shared achievements"
-msgstr "Shared achievements"
-
-#: UI/SettingsUI.cs:275
-msgid "Also unlock the achievements your teammates get. They need the same mod version."
-msgstr "Also unlock the achievements your teammates get. They need the same mod version."
-
-#: UI/SettingsUI.cs:282
-msgid "Controls"
-msgstr "Controls"
-
-#: UI/SettingsUI.cs:286
-msgid "Emote wheel: hold T or L3"
-msgstr "Emote wheel: hold T or L3"
-
-#: UI/SettingsUI.cs:287
-msgid "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
-msgstr "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
-
-#: UI/SettingsUI.cs:295
-msgid "Debug"
-msgstr "Debug"
-
-#: UI/SettingsUI.cs:297
-msgid "Player immortal"
-msgstr "Player immortal"
-
-#: UI/SettingsUI.cs:301
-msgid "Use Explorer's Rune"
-msgstr "Use Explorer's Rune"
-
-#: UI/SettingsUI.cs:306
-msgid "Start perk"
-msgstr "Start perk"
-
-#: UI/SettingsUI.cs:312
-msgid "Enable mobs sync"
-msgstr "Enable mobs sync"
-
-#: UI/SettingsUI.cs:316
-msgid "Sync vertical position"
-msgstr "Sync vertical position"
-
-#: UI/SettingsUI.cs:317
-msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-msgstr "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
-
-#: UI/SettingsUI.cs:321
+#: UI/SettingsUI.cs:205
 msgid "Buffered mob movement"
 msgstr "Buffered mob movement"
 
-#: UI/SettingsUI.cs:322
+#: UI/SettingsUI.cs:206
 msgid "Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode."
 msgstr "Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode."
+
+#: UI/SettingsUI.cs:213
+msgid "Host settings"
+msgstr "Host settings"
+
+#: UI/SettingsUI.cs:226
+msgid "Co-op difficulty"
+msgstr "Co-op difficulty"
+
+#: UI/SettingsUI.cs:227
+msgid "Scales mob health, boss health and mob damage by the number of players. Set by the host."
+msgstr "Scales mob health, boss health and mob damage by the number of players. Set by the host."
+
+#: UI/SettingsUI.cs:230
+msgid "Mob health"
+msgstr "Mob health"
+
+#: UI/SettingsUI.cs:236
+msgid "Boss health"
+msgstr "Boss health"
+
+#: UI/SettingsUI.cs:242
+msgid "Mob damage"
+msgstr "Mob damage"
+
+#: UI/SettingsUI.cs:259
+msgid "Scroll pick"
+msgstr "Scroll pick"
+
+#: UI/SettingsUI.cs:260
+msgid "What happens for everyone while a player picks a scroll. Set by the host."
+msgstr "What happens for everyone while a player picks a scroll. Set by the host."
+
+#: UI/SettingsUI.cs:270
+msgid "Achievements"
+msgstr "Achievements"
+
+#: UI/SettingsUI.cs:273
+msgid "Steam achievements"
+msgstr "Steam achievements"
+
+#: UI/SettingsUI.cs:274
+msgid "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
+msgstr "Unlock Steam achievements while playing with the mod. Off until the game restarts once debug cheats were used."
+
+#: UI/SettingsUI.cs:279
+msgid "Shared achievements"
+msgstr "Shared achievements"
+
+#: UI/SettingsUI.cs:280
+msgid "Also unlock the achievements your teammates get. They need the same mod version."
+msgstr "Also unlock the achievements your teammates get. They need the same mod version."
+
+#: UI/SettingsUI.cs:287
+msgid "Controls"
+msgstr "Controls"
+
+#: UI/SettingsUI.cs:291
+msgid "Emote wheel: hold T or L3"
+msgstr "Emote wheel: hold T or L3"
+
+#: UI/SettingsUI.cs:292
+msgid "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
+msgstr "Press the left stick without tilting it, pick with the right stick or the mouse, then release."
+
+#: UI/SettingsUI.cs:300
+msgid "Debug"
+msgstr "Debug"
+
+#: UI/SettingsUI.cs:302
+msgid "Player immortal"
+msgstr "Player immortal"
+
+#: UI/SettingsUI.cs:306
+msgid "Use Explorer's Rune"
+msgstr "Use Explorer's Rune"
+
+#: UI/SettingsUI.cs:311
+msgid "Start perk"
+msgstr "Start perk"
+
+#: UI/SettingsUI.cs:317
+msgid "Enable mobs sync"
+msgstr "Enable mobs sync"
+
+#: UI/SettingsUI.cs:321
+msgid "Sync vertical position"
+msgstr "Sync vertical position"
+
+#: UI/SettingsUI.cs:322
+msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
+msgstr "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
 
 #: UI/SettingsUI.cs:326
 msgid "Mobs sync trace logging"

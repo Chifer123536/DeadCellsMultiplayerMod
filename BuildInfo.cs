@@ -6,8 +6,8 @@ namespace DeadCellsMultiplayerMod;
 /// </summary>
 internal static class BuildInfo
 {
-    public const string Version = "0.8.91-coop.6";
-    public const string SourceMarker = "v0.8.91-coop.6-p25";
+    public const string Version = "0.8.91-coop.7";
+    public const string SourceMarker = "v0.8.91-coop.7-p25";
     // Protocol 19: launch convergence, level-boundary identity, sequenced level seeds and ordered player positions.
     //   * The host re-publishes the full launch prerequisite set (GEN/CGDATA/RUNCOMMIT/SEED/
     //     RUNEXEC) until the client confirms, and GEN is host-cached and replayed to late joiners.

@@ -149,31 +149,31 @@ msgstr "下一张地图"
 msgid "Player {0}"
 msgstr "玩家 {0}"
 
-#: UI/SettingsUI.cs:295
+#: UI/SettingsUI.cs:300
 msgid "Debug"
 msgstr "调试"
 
-#: UI/SettingsUI.cs:297
+#: UI/SettingsUI.cs:302
 msgid "Player immortal"
 msgstr "玩家无敌"
 
-#: UI/SettingsUI.cs:301
+#: UI/SettingsUI.cs:306
 msgid "Use Explorer's Rune"
 msgstr "使用探险家符文"
 
-#: UI/SettingsUI.cs:306
+#: UI/SettingsUI.cs:311
 msgid "Start perk"
 msgstr "起始变异"
 
-#: UI/SettingsUI.cs:312
+#: UI/SettingsUI.cs:317
 msgid "Enable mobs sync"
 msgstr "启用怪物同步"
 
-#: UI/SettingsUI.cs:316
+#: UI/SettingsUI.cs:321
 msgid "Sync vertical position"
 msgstr "同步垂直位置"
 
-#: UI/SettingsUI.cs:317
+#: UI/SettingsUI.cs:322
 msgid "Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."
 msgstr "将主机的垂直位置应用于受重力影响的怪物。关闭：步行怪仅同步 X；飞行怪仍会同步 Y。开启：可减少不同步，但可能使地面怪瞬移。"
 

@@ -201,6 +201,11 @@ public class SettingsUI :
             T("Mod language"),
             T("Language of the co-op menus. \"As in game\" follows the game language."),
             labels, current, index => OnModLanguageChanged(self, index));
+
+        AddToggle(self, parent, T("Buffered mob movement"),
+            T("Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode."),
+            MultiplayerSettingsStorage.MobPuppets,
+            () => MultiplayerSettingsStorage.MobPuppets = !MultiplayerSettingsStorage.MobPuppets);
     }
 
     static void AddHostSection(Options self, dc.h2d.Flow parent)
@@ -317,11 +322,6 @@ public class SettingsUI :
             T("Applies host vertical position to gravity mobs. Off: X-only for walkers; flying mobs still sync Y. On: can reduce desync but may snap ground mobs."),
             MultiplayerSettingsStorage.SyncVerticalPosition,
             () => MultiplayerSettingsStorage.SyncVerticalPosition = !MultiplayerSettingsStorage.SyncVerticalPosition);
-
-        AddToggle(self, parent, T("Buffered mob movement"),
-            T("Client shows enemies on the host's timeline with a short adaptive delay: smooth, no drift. Off: the old pull-to-latest mode."),
-            MultiplayerSettingsStorage.MobPuppets,
-            () => MultiplayerSettingsStorage.MobPuppets = !MultiplayerSettingsStorage.MobPuppets);
 
         AddToggle(self, parent, T("Mobs sync trace logging"), null,
             MultiplayerSettingsStorage.DebugMobsSyncTrace,
